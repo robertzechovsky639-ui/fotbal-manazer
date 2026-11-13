@@ -65,8 +65,8 @@ table{width:100%;border-collapse:collapse}
 @keyframes up{from{transform:translateY(40px);opacity:.3}to{transform:none;opacity:1}}
 .modal h2{margin:0 0 10px;font-size:19px}
 .mclose{float:right;width:44px;height:44px;margin:-8px -6px 0 0;border-radius:12px;font-size:20px;color:var(--mut)}
-.toast{position:fixed;left:50%;top:calc(var(--app-vtop,0px) + 64px);transform:translateX(-50%);z-index:300;background:linear-gradient(180deg,#1f7a52,#11553a);border:1px solid rgba(62,230,138,.45);padding:10px 16px;border-radius:14px;font-weight:700;font-size:13.5px;animation:toast 2.6s forwards;max-width:90%;text-align:center;pointer-events:none}
-@keyframes toast{0%{opacity:0;transform:translate(-50%,-10px)}8%{opacity:1;transform:translate(-50%,0)}85%{opacity:1}100%{opacity:0}}
+.toast{position:fixed;left:50%;top:calc(var(--app-vtop,0px) + var(--app-vh,100dvh) - 150px - env(safe-area-inset-bottom,0px));pointer-events:none;max-width:88vw;text-align:center;transform:translateX(-50%);z-index:300;background:linear-gradient(180deg,#1f7a52,#11553a);border:1px solid rgba(62,230,138,.45);padding:10px 16px;border-radius:14px;font-weight:700;font-size:13.5px;animation:toast 2.6s forwards;max-width:90%;text-align:center;pointer-events:none}
+@keyframes toast{0%{opacity:0;transform:translate(-50%,10px)}8%{opacity:1;transform:translate(-50%,0)}85%{opacity:1}100%{opacity:0}}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .tile{background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:13px;padding:10px 8px;text-align:center;min-width:0}
 .tile .v{font-size:17px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tile .k{font-size:11px;color:var(--mut)}
@@ -164,3 +164,5 @@ table{width:100%;border-collapse:collapse}
 .chatl{font-size:13.5px;line-height:1.4;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.05)}
 .ev.big.pso,.ev.pso{font-weight:800}
 .cupcard{border-color:rgba(255,211,77,.45)}
+
+.chatl div{margin-top:2px}.cp-fanH{color:#7fd1ff}.cp-fanA{color:#ffb27f}.cp-troll{color:#ff7f9e}.cp-stat{color:#b7a6ff}.cp-vet{color:#e8cf7a}.cp-nov{color:#9fe8a6}.cp-opt{color:#ffe07f}.cp-pes{color:#a9b4c2}
