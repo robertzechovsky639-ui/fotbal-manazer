@@ -166,3 +166,7 @@ table{width:100%;border-collapse:collapse}
 .cupcard{border-color:rgba(255,211,77,.45)}
 
 .chatl div{margin-top:2px}.cp-fanH{color:#7fd1ff}.cp-fanA{color:#ffb27f}.cp-troll{color:#ff7f9e}.cp-stat{color:#b7a6ff}.cp-vet{color:#e8cf7a}.cp-nov{color:#9fe8a6}.cp-opt{color:#ffe07f}.cp-pes{color:#a9b4c2}
+.vbar{display:flex;height:8px;border-radius:5px;overflow:hidden;background:rgba(255,255,255,.06);gap:2px}.vbar span{display:block;height:100%}.vb1{background:#3fb37f}.vbx{background:#8a94a6}.vb2{background:#e0a43a}
+.vlbl{display:flex;justify-content:space-between;gap:6px;margin-top:3px;font-size:11px;line-height:1.25}.vlbl span{display:flex;flex-direction:column;min-width:0}.vlbl span:nth-child(2){align-items:center;text-align:center}.vlbl span:last-child{align-items:flex-end;text-align:right}.vlbl small{opacity:.65;font-size:10.5px;white-space:nowrap}
+.bm .vbar{margin-top:6px;height:6px}
+#mvbody .seg button{min-height:44px}
