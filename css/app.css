@@ -170,3 +170,5 @@ table{width:100%;border-collapse:collapse}
 .vlbl{display:flex;justify-content:space-between;gap:6px;margin-top:3px;font-size:11px;line-height:1.25}.vlbl span{display:flex;flex-direction:column;min-width:0}.vlbl span:nth-child(2){align-items:center;text-align:center}.vlbl span:last-child{align-items:flex-end;text-align:right}.vlbl small{opacity:.65;font-size:10.5px;white-space:nowrap}
 .bm .vbar{margin-top:6px;height:6px}
 #mvbody .seg button{min-height:44px}
+
+.rcchat{max-height:34vh;overflow-y:auto;-webkit-overflow-scrolling:touch}.rcb{max-width:86%;margin:4px 0;padding:6px 10px;border-radius:12px 12px 12px 4px;background:rgba(255,255,255,.07);font-size:13.5px;line-height:1.35}.rcb b{font-size:11.5px;opacity:.75;font-weight:700}.rcb.me{margin-left:auto;border-radius:12px 12px 4px 12px;background:rgba(62,230,138,.16)}
