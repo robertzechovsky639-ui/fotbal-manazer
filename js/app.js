@@ -4,7 +4,7 @@ const STORE=(function(){const mem={};let ls=null;try{const t='__fm_t';window.loc
   set(k,v){mem[k]=v;if(!ls)return false;try{ls.setItem(k,v);return true;}catch(e){try{ls.removeItem(k);ls.setItem(k,v);return true;}catch(e2){return false;}}},
   del(k){delete mem[k];try{if(ls)ls.removeItem(k);}catch(e){}}};})();
 const SAVE_KEY='fotbalManazer_save_v1';
-const FM_VER=4;
+const FM_VER=5;
 let S=null;
 let RNG=Math.random;
 const rnd=(a,b)=>a+RNG()*(b-a), rint=(a,b)=>Math.floor(rnd(a,b+1)), pick=a=>a[Math.floor(RNG()*a.length)];
@@ -981,7 +981,7 @@ let MS=null;
 async function preMatch(){const F=nextMatch();if(!F)return;const h=F.h,a=F.a;
  if(!S.clubs[h]||!S.clubs[a]){modal('<div class="c" style="padding:20px 0"><div class="sp2" style="margin:0 auto 12px"></div><div class="small mut">Načítám soupisku soupeře…</div></div>',{noClose:true});
   try{await ensureClub(S.clubs[h]?a:h);}catch(e){closeModal();toast(e.message||'Soupisku soupeře se nepodařilo načíst.');return;}}
- if(!UI.F||UI.F.h!==F.h||UI.F.a!==F.a){UI.pressKey={};UI.pressDone={};UI.bribe=0;}UI.F=F;const H=S.clubs[h],A=S.clubs[a];const wx=matchWeather(h,F);const sh=teamStrength(h),sa=teamStrength(a);const [xh,xa]=xgPair(sh,sa);
+ if(!UI.F||UI.F.h!==F.h||UI.F.a!==F.a){UI.pressKey={};UI.pressDone={};UI.bribe=0;if(!(UI.fix&&UI.fix.forced))UI.fix=null;UI.fxd=null;}UI.F=F;const H=S.clubs[h],A=S.clubs[a];const wx=matchWeather(h,F);const sh=teamStrength(h),sa=teamStrength(a);const [xh,xa]=xgPair(sh,sa);
  const pw=winProb(xh,xa);const opp=h===S.clubId?a:h;const op=clubPlayers(opp).filter(available).sort((x,y)=>y.ovr-x.ovr).slice(0,3);
  const row=(k,x,y)=>`<div class="stt"><b>${Math.round(x)}</b><span class="k">${k}</span><b class="r">${Math.round(y)}</b><div class="dbar"><i style="width:${x/(x+y)*100}%"></i><i style="width:${y/(x+y)*100}%"></i></div></div>`;
  const koT=F.ko?(F.ko.legs===2&&F.ko.leg===1?`<div class="small c gold" style="margin-top:4px">První zápas ${F.ko.agg[1]}:${F.ko.agg[0]} · rozhoduje celkové skóre, při rovnosti prodloužení a penalty</div>`:F.ko.decide&&F.ko.legs===1?`<div class="small c gold" style="margin-top:4px">Vyřazovací zápas – při remíze prodloužení, pak penalty</div>`:`<div class="small c mut" style="margin-top:4px">První zápas dvojzápasu</div>`):'';
@@ -991,7 +991,7 @@ async function preMatch(){const F=nextMatch();if(!F)return;const h=F.h,a=F.a;
  <div class="card" style="padding:8px 12px"><div class="row small" style="gap:10px;flex-wrap:wrap"><span>${wxText(wx)}</span><span class="sp"></span><span>${fansIc()} Fanoušci: <b class="${fansCls()}">${fansLabel()}</b></span></div>${(S.riv&&S.riv[opp]>=3)?'<div class="tiny gold" style="margin-top:4px">🔥 Vyhrocený souboj s rivalem – soupeř bude extra motivovaný.</div>':''}</div>
  ${v4PreHtml(F)}${pressHtml('pre',F)}
  ${lineupIssues()}
- <button class="btn ghost w100" style="margin-bottom:8px" onclick="bribeSheet()">🤫 Obálka pro rozhodčího${UI.bribe?' · '+BRIBE[UI.bribe][1].toLowerCase()+' ✓':''}</button>
+ <button class="btn ghost w100" style="margin-bottom:8px" onclick="bribeSheet()">🤫 Obálka pro rozhodčího${UI.bribe?' · '+BRIBE[UI.bribe][1].toLowerCase()+' ✓':''}</button>${typeof fixSheet==='function'&&!(S.fix&&S.fix.ban>0)?`<button class="btn ghost w100" style="margin-bottom:8px" onclick="UI.fxd=null;fixSheet()">🕴️ Prodat zápas${UI.fix?' · domluveno ✓':''}</button>`:''}
  <div class="mstick"><div class="grid2"><button class="btn ghost" onclick="closeModal();go('tac')">📋 Sestava</button><button class="btn ghost" onclick="quickPlay()">⏩ Jen výsledek</button></div><div style="height:8px"></div><button class="btn big gold" id="pmgo" onclick="startLive()">▶ Hrát zápas</button></div>`);}
 function winProb(xh,xa){let ph=0,pd=0,pa=0;const pf=(l,k)=>{let f=1;for(let i=2;i<=k;i++)f*=i;return Math.exp(-l)*Math.pow(l,k)/f;};for(let i=0;i<9;i++)for(let j=0;j<9;j++){const p=pf(xh,i)*pf(xa,j);if(i>j)ph+=p;else if(i===j)pd+=p;else pa+=p;}const t=ph+pd+pa;return [ph/t,pd/t,pa/t];}
 function quickPlay(){closeModal();const F=UI.F||nextMatch();const M=createMatch(F.h,F.a,F);bribeApply(M);simToEnd(M);endLive(M,true);}
@@ -1096,7 +1096,7 @@ function uiEndSeason(){const rep=endSeason();const me=myClub();
  ${rep.fired?`<div class="card" style="border-color:var(--bad)"><b class="bad">Vedení s tebou ukončilo spolupráci.</b><div class="small mut" style="margin-top:4px">Můžeš převzít jiný klub ve stejné zemi.</div></div><button class="btn big red" onclick="closeModal();firedPick()">Vybrat nový klub</button>`:`<button class="btn big gold" onclick="closeModal();render();window.scrollTo(0,0)">Začít sezónu ${seasonLabel(S.season)}</button>`}`,{noClose:true});}
 function firedPick(){const ids=Object.keys(S.clubs).filter(id=>id!==S.clubId).sort((a,b)=>S.clubs[a].rep-S.clubs[b].rep);const low=ids.filter(id=>S.clubs[id].rep<=myClub().rep).slice(-8);const opts=(low.length?low:ids.slice(0,8));
  modal(`<h2>Nabídky práce</h2><div class="small mut" style="margin-bottom:8px">O tvé služby mají zájem tyto kluby:</div>${opts.map(id=>{const c=S.clubs[id];return `<button class="lgpick" onclick="takeClub('${id}')">${badge(c)}<span class="t"><b>${esc(c.n)}</b><small>${esc(leagueLabel(c.lg))} · síla ${c.rep}</small></span></button>`;}).join('')}`,{noClose:true});}
-function sackModal(){S.sackNow=0;modal(`<div class="c"><div style="font-size:46px">🧾</div><h2>Konec v klubu</h2><div class="small">Po skandálu s rozhodčím vedení ztratilo veškerou důvěru a s okamžitou platností tě odvolalo.</div></div><button class="btn big red" style="margin-top:12px" onclick="closeModal();firedPick()">Vybrat nový klub</button>`,{noClose:true});}
+function sackModal(){S.sackNow=0;setTimeout(()=>{S.sackWhy=null;},0);modal(`<div class="c"><div style="font-size:46px">🧾</div><h2>Konec v klubu</h2><div class="small">${S.sackWhy||'Po skandálu s rozhodčím'} vedení ztratilo veškerou důvěru a s okamžitou platností tě odvolalo.</div></div><button class="btn big red" style="margin-top:12px" onclick="closeModal();firedPick()">Vybrat nový klub</button>`,{noClose:true});}
 function takeClub(id){S.clubId=id;S.tac=defaultTactic(id);S.boardTrust=50;S.offers=[];S.fans=55;S.riv={};addNews('🤝',`${S.manager} převzal klub ${myClub().n}.`);saveGame();closeModal();render();}
 // ===================== ULOŽENÍ =====================
 function migrateSave(s){if(!s||typeof s!=='object')return s;s.v=s.v||1;
@@ -1893,8 +1893,105 @@ function v4bHomeCards(){const V=S.v4;const me=myClub();let h='';if(S.round===0&&
  const _rc2=renderCareer;renderCareer=function(){return _rc2()+rivalsHtml();};
  const _mh=v4MineHtml;v4MineHtml=function(p){return persHtml(p)+_mh(p);};
  const _oh=v4OtherHtml;v4OtherHtml=function(p){return persHtml(p)+_oh(p);};
- const _re=recalc;recalc=function(M){_re(M);if(M.tb&&M.str)M.str.forEach((s,i)=>{const b=M.tb[i]||0;if(b){s.att+=b;s.def+=b;s.mid+=b;}});};
+ const _re=recalc;recalc=function(M){_re(M);if(M.tb&&M.str)M.str.forEach((s,i)=>{const b=M.tb[i]||0;if(b){s.att+=b;s.def+=b;s.mid+=b;}});if(M.tb&&M.str)M.xg=xgPair(M.str[0],M.str[1]);};
  const _cm=createMatch;createMatch=function(h,a,F){const M=_cm(h,a,F);if((h===S.clubId||a===S.clubId)&&UI.talk&&TALK[UI.talk]){const r=talkEff(M,UI.talk,0);M.ev.push({m:0,t:'ko',tx:'🗣️ '+TALK[UI.talk][1]+': '+r.tx});}return M;};
+})();
+
+// ===== Prodej zápasu (satirická herní mechanika, jen herní peníze) =====
+const FIXK={lose:['Prohra','Tvůj tým zápas prohraje.',1],lose2:['Prohra o 2 a více gólů','Soupeř musí vyhrát alespoň o dva góly.',1.8],first:['Soupeř dá první gól','Stačí, aby soupeř skóroval jako první.',0.6]};
+const FIXL={1:['Nenápadně','Pár zaváhání v obraně, nic okatého. Menší šance na úspěch, menší riziko.',5],2:['Okatě','Hráči hrají vyloženě na prohru. Výrazně vyšší šance na „správný" výsledek, ale velké riziko odhalení.',14]};
+const FIX_BETS=[0,500,2000,5000];
+function fixS(){if(!S.fix)S.fix={heat:0,n:0,cases:[],conv:0,ban:0,pr:null,ref:0,ok:0,tips:[]};return S.fix;}
+function fixBase(){return Math.round(clamp(200+(myClub().tv||0)*0.0006,200,2500)*15/100)*100;}
+function fixPay(k){return Math.round(fixBase()*FIXK[k][2]/100)*100;}
+function fixOppOdd(F){const o=matchOdds(F.h,F.a,'fix'+F.h+F.a);return F.h===S.clubId?o['2']:o['1'];}
+function fixRisk(d){if(!d)return 0;const f=fixS();return Math.round(clamp(4+8*d.l+(d.bet?14+d.bet/700:0)+f.heat*5+f.conv*6,0,90));}
+function fixHeatTxt(){const h=fixS().heat;return h<1?'žádné':h<3?'mírné':h<5?'zvýšené':'vysoké';}
+function fixAllowed(F){const f=fixS();return F&&!f.ban&&!(f.pr&&f.pr.forced===0);}
+function fixSheet(){const F=UI.F;if(!F)return;const f=fixS();if(f.ban>0){toast('Máš zákaz vedení týmu, s nikým se teď nebav.');return;}
+ const d=UI.fxd||(UI.fxd=UI.fix?Object.assign({},UI.fix):{k:'lose',l:1,bet:0});const od=fixOppOdd(F);const deal=!!UI.fix;
+ const opt=(arr,cur,fn)=>arr.map(([v,t,s])=>`<button class="btn ${cur===v?'gold':'ghost'} w100" style="margin-bottom:6px;display:block;text-align:left;padding:8px 12px" onclick="${fn}(${typeof v==='string'?`'${v}'`:v})"><b>${t}</b>${s?`<div class="tiny" style="font-weight:400;opacity:.85">${s}</div>`:''}</button>`).join('');
+ modal(`<h2>🕴️ Nabídka „prodat" zápas</h2><div class="small mut" style="margin-bottom:8px">Satirická herní mechanika, jen s herními penězi. Ve skutečném fotbale je ovlivňování zápasů trestný čin.</div>
+ <div class="card" style="padding:10px 12px"><div class="small">Muž z podezřelé sázkařské skupiny ti nabízí peníze na osobní konto, když zápas dopadne podle jejich přání. Záloha 30 % hned, zbytek po zápase. <b>Když to nevyjde, budou chtít zálohu zpátky i s úroky.</b></div></div>
+ <div class="small" style="margin:8px 0 4px"><b>Co chtějí</b></div>${opt(Object.entries(FIXK).map(([k,x])=>[k,x[0]+' · '+fmtMoney(fixPay(k)),x[1]]),d.k,'fixPickK')}
+ <div class="small" style="margin:8px 0 4px"><b>Jak moc to hrát</b></div>${opt(Object.entries(FIXL).map(([k,x])=>[+k,x[0],x[1]]),d.l,'fixPickL')}
+ <div class="small" style="margin:8px 0 4px"><b>Vsadit si proti vlastnímu týmu</b> <span class="tiny mut">(kurz na soupeře ${czOdd(od)})</span></div><div class="grid2" style="gap:6px">${FIX_BETS.map(b=>`<button class="btn ${d.bet===b?'gold':'ghost'}" ${b>S.wallet?'disabled':''} onclick="fixPickB(${b})">${b?fmtMoney(b):'Nesázet'}</button>`).join('')}</div>
+ <div class="small" style="margin-top:10px">Riziko odhalení: <b class="${fixRisk(d)>35?'bad':'warn'}">${fixRisk(d)} %</b> · podezření svazu: ${fixHeatTxt()}${f.conv?` · dřívější tresty: ${f.conv}`:''}</div>
+ <div class="tiny mut" style="margin-top:4px">Poctiví hráči (profesionálové a vůdci) můžou odmítnout a věc vynést ven. Sázka proti sobě riziko výrazně zvyšuje.</div>
+ <div class="grid2" style="margin-top:10px;gap:8px">${deal?`<button class="btn ghost" onclick="fixCancel()">Zrušit dohodu</button>`:`<button class="btn ghost" onclick="UI.fxd=null;closeModal();preMatch()">Odmítnout</button>`}<button class="btn gold" onclick="fixAccept()">${deal?'Upravit dohodu':'Domluvit'}</button></div>`);}
+function fixPickK(k){UI.fxd.k=k;fixSheet();}function fixPickL(l){UI.fxd.l=l;fixSheet();}function fixPickB(b){if(b>S.wallet)return;UI.fxd.bet=b;fixSheet();}
+function fixAccept(){const d=UI.fxd;if(!d)return;UI.fix={k:d.k,l:d.l,bet:d.bet,pay:fixPay(d.k),odd:fixOppOdd(UI.F)};UI.fxd=null;closeModal();toast('Dohodnuto. Teď už není cesty zpět…');preMatch();}
+function fixCancel(){const x=UI.fix;UI.fix=null;UI.fxd=null;if(x&&!x.forced){const f=fixS();f.pr={owe:Math.round(x.pay*0.3/100)*100,forced:null,r:S.round,s:S.season,why:'cancel'};addNews('📞','Telefonát z neznámého čísla: „Dohoda je dohoda, trenére. Za zrušení se platí."');}closeModal();preMatch();}
+function fixOfferCard(F){const f=fixS();if(!F||f.ban||UI.fix||(f.pr&&f.pr.owe))return '';const h=hashStr('of'+S.season+'|'+S.round+'|'+F.h+F.a)%100;if(h>=13||UI.fixNo===S.round+'|'+S.season)return '';
+ return `<div class="card" style="padding:10px 12px;border-color:var(--warn,#e9b949)"><div class="small">📞 <b>Neznámé číslo:</b> „Trenére, máme pro vás nabídku na ${fmtMoney(fixPay('lose'))}. Stačí, když zítra prohrajete."</div><div class="grid2" style="margin-top:8px;gap:8px"><button class="btn ghost" onclick="fixRefuse()">Odmítnout</button><button class="btn ghost" onclick="fixSheet()">Vyslechnout</button></div></div>`;}
+function fixRefuse(){const f=fixS();f.ref++;UI.fixNo=S.round+'|'+S.season;if(f.ref>=3)ach('nezlomny');addNews('🙅',`${S.manager} odmítl podezřelou nabídku na ovlivnění zápasu.`,1);preMatch();}
+// použití v zápase
+function fixApply(M){const f=fixS();const ui=userSide(M);if(f.ban>0){M.fixBan=1;}
+ let d=UI.fix;UI.fix=null;if(!d&&f.pr&&f.pr.forced===1)d={k:'lose',l:1,bet:0,pay:0,odd:1,forced:1};if(!d)return;const xi=onPitch(M.sides[ui]);const hon=xi.filter(id=>{const k=pers(P(id));return k==='pro'||k==='vu';});const ref=hon.filter(()=>RNG()<(d.l===2?0.5:0.3));
+ const eff=Math.max(0.4,1-0.15*ref.length);const sm=clubStr(S.clubId),so=clubStr(M.sides[1-ui].cid);
+ if(d.bet){if(S.wallet<d.bet)d.bet=0;else S.wallet-=d.bet;}
+ const adv=d.forced?0:Math.round(d.pay*0.3/100)*100;if(adv)S.wallet+=adv;
+ M.fix=Object.assign({},d,{side:ui,eff,ref,adv,fav:sm-so});M.fixPen=FIXL[d.l][2]*eff;f.n++;f.heat+=d.l*0.8+(d.bet?0.8:0);
+ xi.forEach(id=>{const p=P(id);if(p)p.hap=clamp((p.hap||60)-3,0,100);});recalc(M);}
+function fixMet(M){const x=M.fix,ui=x.side;const my=M.score[ui],th=M.score[1-ui];if(x.k==='lose')return my<th;if(x.k==='lose2')return th-my>=2;const g=M.ev.find(e=>e.t==='goal');return !!g&&g.s!==ui;}
+function fixSettle(M){const f=fixS();if(f.ban>0){f.ban--;if(!f.ban)addNews('✅','Trest skončil, trenér se vrací na lavičku.');}
+ const x=M.fix;if(!x||x._done)return;x._done=1;const ui=x.side;const my=M.score[ui],th=M.score[1-ui];const ok=fixMet(M);const res=[];
+ if(x.bet){if(th>my){const w=Math.round(x.bet*x.odd);S.wallet+=w;res.push(`Sázka proti vlastnímu týmu vyšla: +${fmtMoney(w)}.`);}else res.push(`Sázka proti vlastnímu týmu propadla (−${fmtMoney(x.bet)}).`);}
+ if(x.forced){if(!f.pr){}else if(ok){f.pr=null;res.push('Mafie je spokojená, dluh je smazaný.');}else{f.pr.owe=Math.round(f.pr.owe*1.3/100)*100;f.pr.forced=null;res.push('Ani tentokrát to nevyšlo. Dluh u mafie roste.');}}
+ else if(ok){const rest=x.pay-x.adv;S.wallet+=rest;res.push(`„Obchod" vyšel: celkem ${fmtMoney(x.pay)} na osobní konto.`);f.ok++;}
+ else{const owe=x.adv*2;f.pr={owe,forced:null,r:S.round,s:S.season,why:'fail'};res.push(`Zápas nedopadl podle dohody. Mafie chce zpátky ${fmtMoney(owe)}.`);addNews('📞',`Výhrůžný telefonát: „Trenére, dohodli jsme se jinak. Do příštího zápasu chceme ${fmtMoney(owe)}."`);}
+ x.ref.forEach(id=>{const p=P(id);if(p){p.hap=clamp((p.hap||60)-12,0,100);addNews('🙅',`${p.n} odmítl hrát na prohru a v kabině je dusno.`,1);}});
+ const obvious=(x.fav>3&&th-my>=3)||x.l===2;let risk=4+8*x.l+(x.bet?14+x.bet/700:0)+f.heat*5+f.conv*6+(obvious?12:0)+x.ref.length*8;risk=clamp(risk,0,92);
+ if(RNG()*100<risk){const sev=x.l+(x.bet?1:0)+(obvious?1:0)+(x.ref.length?1:0);f.cases.push({s:S.season,r0:S.round+1,r1:S.round+rint(3,5),st:0,sev,opp:CL(M.sides[1-ui].cid).n,sc:my+':'+th,bet:x.bet});}
+ else if(ok)ach('prodano');
+ if(th>my&&obvious)fansAdd(-5,'Fanoušci po zápase pískali: „Prodali jste to!" Na tribunách to vřelo.');
+ M._fixRes={ok,res};}
+function fixWeek(){const f=fixS();f.heat=Math.max(0,f.heat-0.1);
+ for(const c of f.cases.slice()){if(c.s<S.season){c.s=S.season;c.r0=Math.min(c.r0,1);c.r1=Math.max(2,c.r1-S.maxRound);}
+  if(c.st===0&&S.round>=c.r0){c.st=1;addNews('🔎',`Disciplinární komise zahájila prošetřování podezřelých sázek na zápas s týmem ${c.opp} (${c.sc}). Kurzy se před zápasem hýbaly podivně.`);fansAdd(-3);S.boardTrust=clamp(S.boardTrust-4,0,100);}
+  else if(c.st===1&&S.round>=c.r1){f.cases=f.cases.filter(z=>z!==c);const guilty=RNG()<clamp(0.5+0.1*c.sev+(c.bet?0.15:0),0,0.95);
+   if(!guilty){addNews('📁',`Disciplinární komise zastavila řízení kvůli nedostatku důkazů. Pověst ale utrpěla.`);fansAdd(-3);if(S.v4)S.v4.mrep=clamp(S.v4.mrep-3,0,100);continue;}
+   const me=myClub();const sev=c.sev+f.conv;const fine=Math.round(clamp((me.tv||0)*4*sev,150000,Math.max(300000,(me.money||0)*0.15))/1e4)*1e4;const ded=Math.min(12,3*sev);const ban=Math.min(10,2*sev);
+   money(-fine,'prize','Pokuta za ovlivňování zápasu');const L=S.leagues[me.lg];if(L&&L.table&&L.table[S.clubId]){L.table[S.clubId].pts-=ded;L.ded=(L.ded||0)+ded;}
+   f.ban=Math.max(f.ban,ban);f.conv++;if(S.v4)S.v4.mrep=clamp(S.v4.mrep-8*sev,0,100);fansAdd(-(12+5*sev));S.boardTrust=clamp(S.boardTrust-(18+8*sev),0,100);
+   clubPlayers(S.clubId).forEach(p=>{p.hap=clamp((p.hap||60)-8,0,100);p.mor=clamp((p.mor||60)-8,0,100);});S.scandal={s:S.season,r:S.round,l:Math.min(3,sev),fix:1};ach('chycen');
+   addNews('🚨',`SKANDÁL! Trenér ${S.manager} usvědčen z prodeje zápasu s týmem ${c.opp}. Trest: pokuta ${fmtMoney(fine)}, odečet ${ded} bodů a zákaz vedení týmu na ${ban} ${czPlural(ban,'zápas','zápasy','zápasů')}.`);
+   if(sev>=4||f.conv>=3||S.boardTrust<=0){S.sackNow=1;S.sackWhy='Po usvědčení z prodeje zápasu';}}}
+ const p=f.pr;if(p&&p.owe&&p.forced==null&&(S.round-p.r>=3||p.s<S.season)){p.r=S.round;p.s=S.season;fixMafiaHit();}}
+function fixMafiaHit(){const f=fixS();const r=RNG();const ps=clubPlayers(S.clubId);
+ if(r<0.35){const loss=Math.min(S.wallet,Math.round(f.pr.owe*0.5/100)*100);S.wallet-=loss;addNews('🔥',`Někdo ti v noci podpálil auto. Škoda ${fmtMoney(loss)} z osobního konta. Vzkaz za stěračem: „Dluh trvá."`);}
+ else if(r<0.7){ps.forEach(p=>p.mor=clamp((p.mor||60)-6,0,100));addNews('😨','Před tréninkem postávali neznámí muži a hráčům vyhrožovali. Nálada v kabině je pod psa.');}
+ else{f.cases.push({s:S.season,r0:S.round+1,r1:S.round+rint(2,4),st:0,sev:2,opp:'neznámým soupeřem',sc:'?',bet:0});addNews('📰','Novináři dostali anonymní tip na trenéra, který „spolupracuje se sázkaři". Začíná se o tom mluvit.');}}
+function fixPay2(){const f=fixS();const p=f.pr;if(!p)return;if(S.wallet<p.owe){toast('Na osobním kontě nemáš dost peněz.');return;}S.wallet-=p.owe;f.pr=null;addNews('💸','Dluh u sázkařské mafie je splacený. Snad už dají pokoj.');saveGame();render();}
+function fixThrow(){const f=fixS();if(!f.pr)return;f.pr.forced=1;toast('Příští zápas máš „prohrát". Dluh se tím smaže.');saveGame();render();}
+function fixDefy(){const f=fixS();if(!f.pr)return;f.pr.r=S.round;fixMafiaHit();if(RNG()<0.5){f.pr=null;addNews('🛡️','Mafie po čase přestala volat. Prý našla jiného trenéra.');}saveGame();render();}
+function fixHomeCard(){const f=fixS();let h='';const p=f.pr;
+ if(p&&p.owe&&p.forced==null)h+=`<div class="card" style="border-color:var(--red,#e5484d)"><h3>📞 Mafie chce peníze</h3><div class="small">${p.why==='cancel'?'Zrušil jsi domluvený zápas.':'Prodaný zápas nedopadl podle dohody.'} Chtějí ${fmtMoney(p.owe)}. Na osobním kontě máš ${fmtMoney(S.wallet)}.</div>
+  <button class="btn ghost w100" style="margin-top:8px" onclick="fixPay2()">💸 Zaplatit ${fmtMoney(p.owe)}</button><button class="btn ghost w100" style="margin-top:6px" onclick="fixThrow()">🎭 Prohrát příští zápas místo placení</button><button class="btn ghost w100" style="margin-top:6px" onclick="fixDefy()">🙅 Odmítnout a riskovat</button></div>`;
+ else if(p&&p.forced===1)h+=`<div class="card" style="padding:10px 12px"><div class="small">🎭 Mafie čeká, že příští zápas prohraješ. Dluh: ${fmtMoney(p.owe)}.</div></div>`;
+ if(f.ban>0)h+=`<div class="card" style="padding:10px 12px"><div class="small">⛔ <b>Zákaz vedení týmu:</b> ještě ${f.ban} ${czPlural(f.ban,'zápas','zápasy','zápasů')}. Tým vede asistent a zápasy se hrají bez tebe.</div></div>`;
+ const open=f.cases.filter(c=>c.st===1).length;if(open)h+=`<div class="card" style="padding:10px 12px"><div class="small">🔎 Disciplinární komise prošetřuje ${open===1?'jeden tvůj zápas':open+' tvoje zápasy'}. Verdikt přijde v příštích týdnech.</div></div>`;
+ return h;}
+function fixPostHtml(M){const r=M._fixRes;if(!r)return '';return `<div class="card" style="padding:8px 12px"><h3>🕴️ Prodaný zápas</h3>${r.res.map(t=>`<div class="small" style="padding:2px 0">${esc(t)}</div>`).join('')}</div>`;}
+Object.assign(ACH,{prodano:['🕶️','Šedá eminence','Prodej zápas a nenech se chytit.'],chycen:['⚖️','Před komisí','Dostaň trest za prodej zápasu.'],nezlomny:['🛡️','Nezlomný','Odmítni tři nabídky na prodej zápasu.'],vlasta:['🎩','Na radu veterána','Vyhraj sázku podle Vlastova tipu týdne.']});
+Object.assign(CH,{fix_odds:['Kurzy na tenhle zápas se před výkopem hýbaly hodně divně. Někdo tam naházel velké peníze na {a}…','Koukám na pohyb kurzů a něco tu smrdí. Tohle není normální.','Data jsou jasná: během hodiny spadl kurz o třetinu. Tohle se jen tak nestane.'],
+ fix_vet:['Čtyřicet let sázím a tenhle pohyb kurzů znám. Na tohle bych nesázel ani korunu.','Kluci, opatrně. Když se kurz takhle propadne, ví někdo víc než my.'],
+ fix_goal:['To je prodaný jak prase, podívejte se na tu obranu!','Brankář se ani nehnul. Komise by si to měla pustit zpátky.','To snad nehrají vážně. Tohle je divadlo, ne fotbal.','Ten zákrok v obraně… tohle by nezahrál ani dorost. Něco tu nehraje.']});
+FORUM.fixed=['Tohle byl prodaný zápas, jasný jak facka.','Hráli jak bez nohou. Ať se na to podívá komise.','Za tohle chci vrátit vstupné. Ostuda!','Kdo dneska vydělal, to se jednou dozvíme.'];
+(function(){
+ const _ba=bribeApply;bribeApply=function(M){_ba(M);try{fixApply(M);}catch(e){console.warn(e);}};
+ const _re=recalc;recalc=function(M){_re(M);if(M.str&&(M.fixPen||M.fixBan)){const i=M.fix?M.fix.side:userSide(M);const s=M.str[i];const p=(M.fixPen||0)+(M.fixBan?2:0);s.att-=p;s.def-=p;s.mid-=p;M.xg=xgPair(M.str[0],M.str[1]);}};
+ const _am=v4AfterMatch;v4AfterMatch=function(M){try{fixSettle(M);}catch(e){console.warn(e);}_am(M);};
+ const _pp=v4PostHtml;v4PostHtml=function(M){return fixPostHtml(M)+_pp(M);};
+ const _ph=v4PreHtml;v4PreHtml=function(F){let x='';try{const f=fixS();x=fixOfferCard(F);if(f.pr&&f.pr.forced===1&&!UI.fix)UI.fix={k:'lose',l:1,bet:0,pay:0,odd:1,forced:1};if(UI.fix)x+=`<div class="card" style="padding:8px 12px"><div class="small">🕴️ Domluveno: <b>${esc(FIXK[UI.fix.k][0].toLowerCase())}</b>, ${esc(FIXL[UI.fix.l][0].toLowerCase())}${UI.fix.bet?`, sázka proti sobě ${fmtMoney(UI.fix.bet)}`:''}.</div></div>`;if(f.ban>0)x+=`<div class="card" style="padding:8px 12px"><div class="small">⛔ Máš zákaz vedení týmu. Zápas se odehraje bez tebe.</div></div>`;}catch(e){}return x+_ph(F);};
+ const _hc=v4HomeCards;v4HomeCards=function(){let h='';try{h=fixHomeCard();}catch(e){}return h+_hc();};
+ const _wk=v4Week;v4Week=function(){_wk();try{fixWeek();}catch(e){console.warn(e);}};
+ const _sl=startLive;startLive=function(){if(S.fix&&S.fix.ban>0){toast('Máš zákaz vedení týmu, zápas se odehraje bez tebe.');return quickPlay();}return _sl();};
+ const _ib=initBetChat;initBetChat=function(M){_ib(M);try{if(M.fix&&MS&&MS.chat){const U=MS.chat.users;chSay(M,U.find(u=>u.per==='stat')||U[0],'fix_odds',{},true);if(RNG()<0.7)chSay(M,U.find(u=>u.per==='vet')||U[1],'fix_vet',{},true);}}catch(e){}};
+ const _co=chatOnEvents;chatOnEvents=function(M,ev){_co(M,ev);try{if(M.fix&&MS&&MS.chat&&ev.some(e=>e.t==='goal'&&e.s!==M.fix.side)&&RNG()<0.6){const U=MS.chat.users;chSay(M,U.find(u=>u.per==='troll')||pick(U),'fix_goal',{},true);}}catch(e){}};
+ const _fh=forumHtml;forumHtml=function(M){if(M.fix){const o=FORUM.scandal;FORUM.scandal=FORUM.fixed;const s0=S.scandal;S.scandal={s:S.season};const h=_fh(M);FORUM.scandal=o;S.scandal=s0;return h;}return _fh(M);};
+ const _tg=tipGen;tipGen=function(){const t=_tg();try{if(t&&!t.none){const f=fixS();const k=t.mid+'|'+t.mk;if(!f.tips.includes(k)){f.tips.push(k);if(f.tips.length>30)f.tips.shift();}}}catch(e){}return t;};
+ const _ba2=betAch;betAch=function(){_ba2();const f=fixS();for(const b of S.bets||[]){if(b.st==='won'&&b.legs.some(l=>f.tips.includes(l.mid+'|'+l.mk))){ach('vlasta');break;}}};
 })();
 
 
