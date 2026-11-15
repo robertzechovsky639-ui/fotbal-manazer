@@ -2098,14 +2098,22 @@ function volPool(h,a){return clamp(Math.round(Math.exp((clubStr(h)+clubStr(a)-12
 function volSplit(pr,seed,keys){const w=keys.map(k=>Math.pow(Math.max(0.01,pr[k]),0.8)*(1+((hashStr(seed+k)%100)/100-0.5)*0.25));const t=w.reduce((x,y)=>x+y,0)||1;return w.map(x=>x/t);}
 function volPre(h,a,seed){const o=matchOdds(h,a,seed||'');const inv=k=>1/o[k];const s3=inv('1')+inv('X')+inv('2'),s2=inv('o25')+inv('u25');const pr={'1':inv('1')/s3*1.08,'X':inv('X')/s3*0.9,'2':inv('2')/s3,o25:inv('o25')/s2,u25:inv('u25')/s2};
  const P0=volPool(h,a);return {pool:P0,res:volSplit(pr,seed+'r',['1','X','2']).map(x=>Math.round(P0*x/10)*10),ou:volSplit(pr,seed+'o',['o25','u25']).map(x=>Math.round(P0*0.45*x/10)*10)};}
-function volLive(M,w){const h=M.h.cid,a=M.a.cid,seed=h+a+S.season;const base=volPre(h,a,seed);const lp=lvProbs(M);const f=1+Math.min(M.min,95)/40;const bl=Math.min(0.7,M.min/90*0.8);
- const pre=base.res.map(x=>x/base.pool);const lv=volSplit(lp,seed+'l'+Math.floor(M.min/5),['1','X','2']);const sh=pre.map((x,i)=>x*(1-bl)+lv[i]*bl);const pool=base.pool*f;
- const res=sh.map(x=>Math.round(pool*x/10)*10);const ouPre=base.ou.map(x=>x/(base.ou[0]+base.ou[1]||1));const ol=volSplit(lp,seed+'q'+Math.floor(M.min/5),['o25','u25']);const ou=ouPre.map((x,i)=>Math.round(pool*0.45*(x*(1-bl)+ol[i]*bl)/10)*10);
- const nx=volSplit(lp,seed+'n'+lvGoals(M).length,['nx_h','nx_0','nx_a']).map(x=>Math.round(pool*0.2*Math.min(1,M.min/20+0.2)*x/10)*10);
+function volAcc(M){const h=M.h.cid,a=M.a.cid,seed=h+a+S.season;let V=M.vol;
+ if(!V){const base=volPre(h,a,seed);V=M.vol={pool:base.pool,pre:base.res.map(x=>x/base.pool),ouPre:base.ou.map(x=>x/(base.ou[0]+base.ou[1]||1)),res:base.res.slice(),ou:base.ou.slice(),nx:[0,0,0],ng:0,m:0};}
+ const tgt=Math.min(M.min,125);if(V.m>=tgt)return V;const lp=lvProbs(M);const ng=lvGoals(M).length;if(ng!==V.ng){V.ng=ng;V.nx=[0,0,0];}
+ for(let m=V.m+1;m<=tgt;m++){const r=V.pool/40*(0.85+((hashStr(seed+'m'+m)%100)/100)*0.3)*(m>75?1.25:1);
+  const w=Math.min(0.6,0.15+0.5*m/90);const lv=volSplit(lp,seed+'l'+Math.floor(m/5),['1','X','2']);
+  for(let i=0;i<3;i++)V.res[i]+=r*(V.pre[i]*(1-w)+lv[i]*w);
+  const ol=volSplit(lp,seed+'q'+Math.floor(m/5),['o25','u25']);for(let i=0;i<2;i++)V.ou[i]+=r*0.45*(V.ouPre[i]*(1-w)+ol[i]*w);
+  const nl=volSplit(lp,seed+'n'+ng,['nx_h','nx_0','nx_a']);for(let i=0;i<3;i++)V.nx[i]+=r*0.2*nl[i];}
+ V.m=tgt;return V;}
+function volLive(M,w){const V=volAcc(M);const R=x=>Math.round(x/10)*10;const res=V.res.map(R),ou=V.ou.map(R),nx=V.nx.map(R);
  for(const b of lvList(w)){const k={'1':[res,0],'X':[res,1],'2':[res,2],o25:[ou,0],u25:[ou,1],nx_h:[nx,0],nx_0:[nx,1],nx_a:[nx,2]}[b.mk];if(k)k[0][k[1]]+=b.stake;}
  return {res,ou,nx};}
+function volPct(vals){const t=vals.reduce((x,y)=>x+y,0);if(!t)return vals.map(()=>Math.round(100/vals.length));const raw=vals.map(v=>v/t*100);const fl=raw.map(Math.floor);let rest=100-fl.reduce((x,y)=>x+y,0);
+ raw.map((v,i)=>[v-fl[i],i]).sort((a,b)=>b[0]-a[0]).forEach(([_,i])=>{if(rest>0){fl[i]++;rest--;}});return fl;}
 function volBar(vals,labels){const t=vals.reduce((x,y)=>x+y,0)||1;const cls=['vb1','vbx','vb2'];
- return `<div class="vbar">${vals.map((v,i)=>`<span class="${cls[i%3]}" style="width:${Math.max(4,Math.round(v/t*100))}%"></span>`).join('')}</div><div class="vlbl">${vals.map((v,i)=>`<span>${esc(labels[i])} <b>${Math.round(v/t*100)} %</b><small>${fmtMoney(v)}</small></span>`).join('')}</div>`;}
+ const pc=volPct(vals);return `<div class="vbar">${vals.map((v,i)=>`<span class="${cls[i%3]}" style="width:${Math.max(4,pc[i])}%"></span>`).join('')}</div><div class="vlbl">${vals.map((v,i)=>`<span>${esc(labels[i])} <b>${pc[i]} %</b><small>${fmtMoney(v)}</small></span>`).join('')}</div>`;}
 function volCard(v,title,M){return `<div class="card" style="padding:8px 12px"><div class="row small"><b>💶 ${esc(title||'Kolik vsadili ostatní sázkaři')}</b><span class="sp"></span><span class="tiny mut">celkem ${fmtMoney(v.res.reduce((x,y)=>x+y,0))}</span></div>
  <div class="tiny mut" style="margin:4px 0 2px">Výsledek zápasu</div>${volBar(v.res,['Domácí','Remíza','Hosté'])}<div class="tiny mut" style="margin:6px 0 2px">Počet gólů</div>${volBar(v.ou,['Víc než 2,5','Míň než 2,5'])}${v.nx?`<div class="tiny mut" style="margin:6px 0 2px">Další gól</div>${volBar(v.nx,['Domácí','Nikdo','Hosté'])}`:''}</div>`;}
 // ----- panel živých sázek -----
@@ -2133,7 +2141,10 @@ function lvPanel(w){const M=lvM(w);if(!M)return '';const end=M.ended||(w==='pm'&
  const _pre=v4PreHtml;v4PreHtml=function(F){let x=_pre.apply(this,arguments)||'';try{if(F&&F.h&&F.a)x+=volCard(volPre(F.h,F.a,F.h+F.a+S.season),'Kolik zatím vsadili sázkaři');}catch(e){}return x;};
  const _ss=sideSetup;sideSetup=function(cid,isUser){if(isUser&&!clubPlayers(cid).some(p=>p.pos==='GK'&&available(p))){UI._forceGK=1;try{const y=youthPlayer(cid);if(y){addNews('🧤',`Nouze v brance! Všichni brankáři chybí, z akademie byl povolán ${y.n}.`);}}finally{UI._forceGK=0;}}return _ss.apply(this,arguments);};
 })();
-function volMini(h,a,mid){try{const v=volPre(h,a,mid);const t=v.res.reduce((x,y)=>x+y,0)||1;return `<div class="vbar">${v.res.map((x,i)=>`<span class="${['vb1','vbx','vb2'][i]}" style="width:${Math.max(4,Math.round(x/t*100))}%"></span>`).join('')}</div><div class="tiny mut" style="margin-top:3px">Vsazeno ${fmtMoney(t)}: domácí ${Math.round(v.res[0]/t*100)} %, remíza ${Math.round(v.res[1]/t*100)} %, hosté ${Math.round(v.res[2]/t*100)} %</div>`;}catch(e){return '';}}
+function volMini(h,a,mid){try{const v=volPre(h,a,mid);const t=v.res.reduce((x,y)=>x+y,0)||1;return `<div class="vbar">${v.res.map((x,i)=>`<span class="${['vb1','vbx','vb2'][i]}" style="width:${Math.max(4,Math.round(x/t*100))}%"></span>`).join('')}</div><div class="tiny mut" style="margin-top:3px">Vsazeno ${fmtMoney(t)}: domácí ${volPct(v.res)[0]} %, remíza ${volPct(v.res)[1]} %, hosté ${volPct(v.res)[2]} %</div>`;}catch(e){return '';}}
+
+(function(){const _sm=stepMinute;stepMinute=function(M){const out=_sm(M);try{if(M&&M.vol)volAcc(M);}catch(e){}return out;};
+ const _sl=startLive;startLive=function(){const r=_sl.apply(this,arguments);try{if(MS&&MS.M)volAcc(MS.M);}catch(e){}return r;};})();
 
 // ===== Výtržnosti fanoušků na stadionu =====
 function chS(){if(!S.chaos)S.chaos={n:0,ns:S.season,calm:0,sec:0,doors:0,away:0};const c=S.chaos;if(c.ns!==S.season){c.ns=S.season;c.n=0;}return c;}
@@ -2737,6 +2748,222 @@ function tbMsg(){toast(`Máš zákaz přestupů a jednání ještě ${tbLeft()} 
  // karty na přehledu
  const _hc=v4HomeCards;v4HomeCards=function(){let h='';try{const f=S.fix;if(f&&f.box>0)h+=`<div class="card" style="padding:10px 12px"><div class="small">🏟️ <b>Zákaz vstupu do lóže:</b> ještě ${f.box} ${czPlural(f.box,'zápas','zápasy','zápasů')}. Zápasy sleduješ z tribuny, na trenéra křičet nemůžeš.</div></div>`;if(tbOn())h+=`<div class="card" style="padding:10px 12px"><div class="small">🚫 <b>Zákaz přestupů a jednání:</b> ještě ${tbLeft()} ${czPlural(tbLeft(),'týden','týdny','týdnů')}.</div></div>`;}catch(e){}return h+_hc();};
 })();
+
+// ===== v10: méně opakování v chatech, hádky sázkařů, editor hráčů =====
+// --- obecný výběr bez opakování ---
+function vHist(k){S.vRec=S.vRec||{};const h=S.vRec[k]||(S.vRec[k]=[]);return h;}
+function vPick(arr,k,n){if(!arr||!arr.length)return '';const h=vHist(k);const N=Math.min(n||14,Math.max(0,arr.length-1));const rec=h.slice(-N);let fr=arr.filter(x=>!rec.includes(x));if(!fr.length)fr=arr;const t=pick(fr);h.push(t);if(h.length>40)h.splice(0,h.length-40);return t;}
+function vAddr(){return isOwn()?'šéfe':'trenére';}
+function vAddrP(){return isOwn()?'pane majiteli':'pane trenére';}
+function vEsc(s){return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');}
+// skupiny: t = původní šablony (jak je píše starý kód), v = varianty; {P} cena, {I} věci, {G} cíl, {A} oslovení, {AP} oslovení s "pane"
+function vMkRe(t){const keys=[];const re=new RegExp('^'+vEsc(t).replace(/\\\{(\w+)\\\}/g,(_,k)=>{keys.push(k);return '(.+?)';})+'$');return {re,keys};}
+function vRewrite(groups,t,hk,ctx){for(const g of groups){if(!g._r)g._r=g.t.map(vMkRe);for(const r of g._r){const m=t.match(r.re);if(!m)continue;const d=Object.assign({A:vAddr(),AC:isOwn()?"Šéfe":"Trenére",AP:vAddrP()},ctx||{});r.keys.forEach((k,i)=>d[k]=m[i+1]);
+   let pool=g.no?g.v.slice():g.v.concat(g.t);if(g.per&&ctx&&ctx.per&&g.per[ctx.per])pool=pool.concat(g.per[ctx.per],g.per[ctx.per]);
+   pool=pool.filter(x=>(x.match(/\{(\w+)\}/g)||[]).every(z=>d[z.slice(1,-1)]!=null));if(!pool.length)return t;
+   const x=vPick(pool,hk,12);return x.replace(/\{(\w+)\}/g,(_,k)=>d[k]);}}return t;}
+
+// --- rozhodčí ---
+const V_RF=[
+ {t:['Kafe si dám rád. A o čem přesně byste chtěl mluvit? Ať se zbytečně nezdržujeme.','Pro vás si čas udělám. Co potřebujete?','Mluvit se dá o všem. Jde jen o to, kolik to komu stojí.','Hm. Zajímavé. Povídejte, ale levné to nebude.','Opatrně, telefony mají uši. Co přesně myslíte?','Já nic neslyšel… ale klidně pokračujte. Potichu.'],v:[],
+  per:{cor:['Kafe? Klidně dvě. Tak co máte na srdci?','Vy jste mi chyběl. O co jde tentokrát?','Sedněte si. Já mám čas, když jde o rozumnou věc.','No konečně někdo, kdo ví, jak to chodí. Poslouchám.','Zítra pískám já, takže to dává smysl. Povídejte.','Ruku vám nepodám, kamery. Ale poslouchám.','S vámi se vždycky dobře povídá. Co by to mělo být?','Hm, kavárna za rohem nemá kamery. Tak spusťte.'],
+   gre:['Za poslouchání neplatíte. Za zbytek ano. Tak co?','Povídejte. Ale počítejte, že já počítám.','Zadarmo ani kuře nehrabe, {A}. Co chcete?','Rád pomůžu. Za rozumný obnos, samozřejmě.','Já jsem otevřený všemu, co se vyplatí. Mluvte.','Čas jsou peníze. Moje obzvlášť. Co to bude?','Hm, zajímá mě jediná věc. Kolik.','Tak sem s tím. A rovnou mi řekněte, jak moc to pro vás znamená.'],
+   cau:['Tady ne. Napište mi to krátce a pak to smažte.','Hlavně potichu. Víte, kolik kolegů teď vyšetřují?','Mám strach, ale poslouchám. Co přesně?','Jestli je to něco velkého, tak ne. Jestli malého… uvidíme.','Telefon nechte v autě. A teď povídejte.','Nikdo nás nesmí vidět. O co jde?','No… jen opatrně. Svaz má oči všude.','Rychle, za chvíli tu bude delegát.']}},
+ {t:['Pane trenére, tohle jsme si snad neřekli. Uvidíme se na hřišti.','Na tohle vám nemám co říct. A doporučuju vám už nic dalšího neříkat.'],
+  v:['{AP}, tohle jste radši neměl psát. Uvidíme se na hřišti.','S tímhle za mnou nechoďte. Pískám podle pravidel a hotovo.','Dělám tu práci dvacet let a nikdy jsem nic nevzal. Nezačnu u vás.','Tohle nechci slyšet. Ani teď, ani nikdy.','Jestli máte námitky k mému výkonu, pište na svaz. Oficiálně.','Zapomenu, že jste to napsal. Jednou. Podruhé ne.','Ne. A vážně vám radím, abyste přestal.','Hrajte fotbal a nechte rozhodování na mně.']},
+ {t:['Tohle jsem si nahrál. Zprávu posílám rovnou na svaz.'],v:['Mám to celé uložené. Svaz to dostane ještě dnes.','Screenshot je hotový. Komise už ví, s kým má tu čest.','Tohle jde přímo delegátovi. Hezký den.','Nahlásil jsem to. Takhle se fotbal dělat nebude.','Zprávu jsem právě odeslal na svaz. Vysvětlujte to jim.']},
+ {t:['Ne, ne. Je toho na mě moc, svaz teď sleduje každého. Nechte mě být.'],v:['Ne, tohle je na mě moc ostré. Mám rodinu.','Takhle přímo? Zbláznil jste se? Končím.','Obálka? Tady? Ne, ne, ne. Nechte mě být.','Tohle ne. Kolega kvůli tomu letos skončil. Sbohem.','Na tohle nemám nervy. Zapomeňte, že jste mě znal.']},
+ {t:['Za tohle chci {P}. A nesmlouvejte moc.','Dobře, ale je to riskantní. {P} a ani o korunu míň.','To vás bude stát {P}. Kvalita něco stojí.'],
+  v:['Udělám to za {P}. Rozumná cena za klidný spánek.','{P}. A rychle, než si to rozmyslím.','Řekněme {P}. Za to dostanete přesně, co chcete.','Moje cena je {P}. Smlouvat můžete, ale nevyplatí se to.','Za {P} se to dá zařídit.','{P} v obálce a jsme domluvení.','Tohle je práce za {P}. Levněji to nikdo neudělá.','Dobře. {P}, hotově, žádné převody.'],
+  per:{cau:['Je to riziko… {P}. Míň nejde, fakt ne.','Kdyby to prasklo, končím. Proto {P}.','{P}, a pak se týden neozývejte.'],gre:['{P}. Kvalita se platí, {A}.','Za {P} vám to udělám s úsměvem.','Hm, {P}. A to vám dávám slevu.'],cor:['Pro vás {P}. Známe se, ne?','{P} a máte to v suchu.','Za {P} to bude vypadat úplně přirozeně.']}},
+ {t:['Domluveno. Na hřišti uvidíte.','Platí. A nikomu ani slovo.','Beru. Zítra to bude zajímavý zápas.'],
+  v:['Ruku na to. Teda… obrazně.','Dobře. Hlavně se pak netvařte nápadně.','Platí. A tenhle chat smažte.','Domluveno. Vy hrajte, já se postarám o zbytek.','Výborně. Uvidíte, že se to vyplatí.','Beru. A po zápase se neznáme.','Hotovo. Píšťalku mám naladěnou.','Tak jo. Zítra to bude vypadat jako normální zápas.','Dohodnuto. Delegát nic nepozná.','Fajn. Na vaší straně budu, jak jen to půjde.']},
+ {t:['Tohle je málo. Řekněme {P}.','Za tohle riskuju kariéru. {P}, poslední slovo… skoro.','Hm, přidejte trochu. {P} a jsme domluvení.'],
+  v:['Tak to ne. {P} a ani o korunu míň.','Málo, {A}. Co takhle {P}?','Ještě kousek. {P} a můžeme si podat ruce.','Myslíte, že pískám za drobné? {P}.','Pod {P} nejdu. Mám taky nějakou hrdost.','Zkuste to znovu. {P}.','Blíží se to. Ale {P} je moje cena.','S tímhle mě nenalákáte. Řekněme {P}.','Já mám hypotéku, {A}. {P}.']},
+ {t:['Urážíte mě. Za tohle ani nevstanu z gauče.','To myslíte vážně? S takovou nabídkou za mnou nechoďte.'],
+  v:['Za tohle si ani nezavážu tkaničky.','To je spropitné, ne nabídka.','Děláte si legraci? Tolik mám v peněžence na oběd.','Za tolik pískám jen okresní přebor. A to ještě nerad.','Tohle si nechte na pivo.','Hm. Myslel jsem, že mluvím s profesionálem.']},
+ {t:['Ještě jedna věc, trenére. Riziko je větší, než jsem čekal. Chci o {P} víc, jinak z toho nic nebude.'],
+  v:['Ještě jedna věc, {A}. Delegát bude nový a přísný. O {P} víc, jinak nic.','Zjistil jsem, že na zápas dorazí kamery navíc. Chci přidat {P}.','Kolega z VAR chce taky svůj díl. {P} navíc.','Situace se změnila, {A}. Bez {P} navíc to neudělám.','Svaz teď sleduje i mě. Přidejte {P}, nebo z toho sejde.','Promiňte, ale tohle je dražší, než jsem myslel. Ještě {P}.']},
+ {t:['Tak nic. Uvidíme se na hřišti a nic jsme si neřekli.'],v:['Jak chcete. Nic se nestalo, nic jsme si nepsali.','Dobře. Tenhle rozhovor nikdy neproběhl.','Škoda. Tak zítra na hřišti, jako by nic.','Tak se mějte. A smažte si to.','Fajn, končíme. Ani slovo nikomu.','Nevadí. Pískám, jak pískám.']},
+ {t:['Tolik věcí najednou? To by bylo moc nápadné. Vyberte míň, nebo nic.'],v:['Všechno najednou? To by poznal i slepý delegát. Míň.','Tohle by bylo vidět až na tribuně. Vyberte jen něco.','Zbláznil jste se? Tohle by šlo hned na svaz. Míň věcí.','Moc toho chcete. Jedna, dvě věci, víc ne.']},
+ {t:['No dobře… tak za původní cenu. Ale jste lakomec.'],v:['Tak dobře, za domluvenou cenu. Ale příště ne.','No jo, platí to původní. Škrt jeden.','Hm. Dobře, udělám to za původně dohodnutou cenu. Ale jste lakomec.','Tak teda bez přídavku. Ale nadšený nejsem.']},
+ // vlastní repliky (nemění, co hráč zvolil)
+ {t:['Dobře, {P}. Platí.'],v:['Beru, {P}. Platí.','Ok, {P}. Dohodnuto.','{P} je v pořádku. Ruku na to.']},
+ {t:['Dám vám {P}.'],v:['Můžu nabídnout {P}.','Co takhle {P}?','Mám pro vás {P}.','{P} a ani o korunu víc.']},
+ {t:['Dobře, přidám {P}.'],v:['Tak jo, přidám {P}.','Dobře, dalších {P}. Ale už nic víc.','Přidávám {P}. Ať to stojí za to.']},
+ {t:['Domluvili jsme se jinak. Ani korunu navíc.'],v:['Dohoda byla jasná. Nepřidám.','Na tohle nepřistoupím. Původní cena.','Ne. Domluvili jsme se a basta.']},
+ {t:['Potřeboval bych: {I}.'],no:1,v:['Moje přání: {I}.','Šlo by zařídit tohle: {I}?','Co potřebuju: {I}.','Mám jednoduchý seznam: {I}.']},
+ {t:['Víte co, zapomeňte na to.'],v:['Nechme to být. Zapomeňte na to.','Víte co, radši ne.','Tak nic, rozmyslel jsem si to.']}
+];
+(function(){const _rs=rfSay;rfSay=function(w,t){try{const per=UI.rc&&UI.rc.ref?UI.rc.ref.per:null;t=vRewrite(V_RF,String(t),'rf_'+w,{per});}catch(e){}return _rs(w,t);};})();
+
+// --- komise ---
+const V_KOM=[
+ {t:['Tohle jste mi neměl psát. Nechám to zapsat do spisu.'],v:['Tohle si přečte celá komise. Do spisu s tím.','Myslíte, že jsem úplatný? Zapisuji si to.','Tohle už je další přestupek. Zapsáno.','Ne. A ten pokus o kontakt přidávám k vašemu případu.','To jste přehnal. O tomhle se dozví předseda.','Neslušné a hloupé. Jde to do spisu.']},
+ {t:['Oběd? Proč ne. O čem si budeme povídat?','Všechno se dá vyřešit, když se chce.','Vyřešit se dá leccos. Otázka je, za kolik.','Hm. Mluvte, ale levné to nebude.','Opatrně, prosím. Co přesně máte na mysli?','Tohle nikdo neslyšel… ale pokračujte.'],v:[],
+  per:{cor:['Oběd mám rád. A ještě radši rozumné lidi.','Spis je tlustý, ale stránky se dají ztratit. Povídejte.','Komise je jen parta lidí. A lidi se dají přesvědčit.','Dobře, že jste se ozval. Co pro vás můžu udělat?','Váš případ znám. Dá se s ním pracovat.','Sejdeme se v klidu. Co byste potřeboval?'],
+   gre:['Za sníženou pokutu chci něco i já. Mluvte.','Pomůžu. Ale moje pomoc není levná.','Ve spisu jsou nepříjemné věci. Kolik vám stojí, aby tam nebyly?','Mám tři děti a chatu. Povídejte.','Tak co nabízíte? Ať nemarníme čas.','Hm, čtu váš spis. Bude to dražší.'],
+   cau:['Píšete mi z vlastního telefonu? Šílenství. Rychle.','Ne tady. Nebo dobře… ale krátce.','Kdyby se to provalilo, letím já i vy. Co chcete?','Hlavně žádné převody. Co přesně?','Mám strach, ale poslouchám.','Šeptem, prosím. Kolegové tu chodí kolem.']}},
+ {t:['To by šlo zařídit. {P} a nikdo se nic nedozví.'],v:['Dá se to udělat. Za {P}.','Za {P} se spis ztratí… aspoň trochu.','Řekněme {P} a uvidíte, jak jsme shovívaví.','{P}. Komise je pak velmi chápavá.','Moje cena je {P}. A smažte tuhle konverzaci.','{P} a verdikt bude příjemnější, než čekáte.','Za {P} se dá na leccos zapomenout.']},
+ {t:['Málo. Řekněme {P}.','Riskuju místo. {P}.'],v:['Tohle nestačí. {P}.','Hm, přidejte. {P}.','Kolegové chtějí taky svůj díl. {P}.','Pod {P} to nejde.','Za tohle riskuju funkci. {P}.','Ještě kousek. {P} a dohodneme se.']},
+ {t:['To je skoro urážka.'],v:['Tohle je spíš urážka než nabídka.','S tímhle za mnou nechoďte.','Za to si u nás ani nevyzvednete razítko.','Vtipné. Další návrh?','To snad nemyslíte vážně.']},
+ {t:['Tak to se nedohodneme. Uvidíme se při jednání.'],v:['Pak se uvidíme u jednání. A přísně.','Tak nic. Komise rozhodne podle spisu.','Škoda. Na jednání vám to nepomůže.','Dobře. Ať rozhodnou paragrafy.']},
+ {t:['Konec rozhovoru.'],v:['Tím končím.','Nemám vám co dalšího říct.','Sbohem.','Na tohle už nebudu odpovídat.']},
+ {t:['Dobrá. Nechte to na mně.'],v:['Dohodnuto. Spis se trochu ztenčí.','Výborně. Uvidíte, že komise bude mírná.','Platí. A nikde to neříkejte.','Dobře. Na jednání se zatvařte zkroušeně.','Beru. Zbytek zařídím.','Domluveno. Ani slovo, ani zpráva.']},
+ {t:['Jak myslíte.'],v:['Vaše volba.','Dobře. Uvidíme se na jednání.','Fajn. Spis zůstává, jak je.','Jak chcete. Já nic nevím.']},
+ {t:['Zapomeňte na to.'],v:['Nechme to být.','Radši ne, zapomeňte na to.','Tak nic, díky.']},
+ {t:['Dobře, {P}.'],v:['Beru, {P}.','Platí, {P}.','{P} je v pořádku.']},
+ {t:['Dám vám {P}.'],v:['Můžu dát {P}.','Co takhle {P}?','Nabízím {P}.']}
+];
+(function(){const _ks=komSay;komSay=function(w,t){try{let per=null;try{per=UI.kc&&UI.kc.mem?UI.kc.mem.per:null;}catch(e){}t=vRewrite(V_KOM,String(t),'kom_'+w,{per});}catch(e){}return _ks(w,t);};})();
+
+// --- mafie / novinky ---
+const V_NEWS=[
+ {t:['Telefonát z neznámého čísla: „Dohoda je dohoda, trenére. Za zrušení se platí."'],v:['Telefonát z neznámého čísla: „Dohoda je dohoda, {A}. Za zrušení se platí."','SMS bez podpisu: „Couvnout se nedá. Zaplatíš."','Do schránky ti někdo hodil obálku s fotkou tvého auta a vzkazem: „Dohoda platí."','Telefonát po půlnoci: „Myslel sis, že nám jen tak utečeš? Za zrušení se platí."']},
+ {t:['Výhrůžný telefonát: „Trenére, dohodli jsme se jinak. Do příštího zápasu chceme {P}."'],v:['Výhrůžný telefonát: „{AC}, dohodli jsme se jinak. Do příštího zápasu chceme {P}."','SMS z neznámého čísla: „Zápas nedopadl, jak měl. Vrať {P}, jinak to bude bolet."','Před stadionem tě zastavili dva chlapi: „Do dalšího kola {P}. Žádné výmluvy."','Hlas v telefonu: „Prohrál jsi nám peníze. {P} do příštího zápasu."']},
+ {t:['Někdo ti v noci podpálil auto. Škoda {P} z osobního konta. Vzkaz za stěračem: „Dluh trvá."'],v:['V noci ti někdo zapálil auto. Škoda {P} z osobního konta. Na plotě visel vzkaz: „Dluh trvá."','Někdo ti rozbil okna v domě. Oprava za {P} jde z osobního konta. Vzkaz: „Pořád dlužíš."','Ráno jsi našel auto bez kol a s rozbitým sklem. Škoda {P}. Na sedadle lísteček: „Dluh trvá."']},
+ {t:['Před tréninkem postávali neznámí muži a hráčům vyhrožovali. Nálada v kabině je pod psa.'],v:['U tréninkového hřiště postávali neznámí muži a hráčům vyhrožovali. V kabině je dusno.','Hráčům někdo v noci volal a vyhrožoval. Tým je nervózní.','Na parkovišti někdo propíchal hráčům pneumatiky. V kabině panuje strach.']},
+ {t:['Novináři dostali anonymní tip na trenéra, který „spolupracuje se sázkaři". Začíná se o tom mluvit.'],v:['Bulvár dostal anonymní tip, že klub „spolupracuje se sázkaři". Lidi si začínají šuškat.','Na sociálních sítích koluje anonymní příspěvek o „dohodách se sázkaři". Novináři čmuchají.','Redakce sportovního deníku prý má zprávu od „dobře informovaného zdroje". Začíná se o tom mluvit.']},
+ {t:['Dluh u sázkařské mafie je splacený. Snad už dají pokoj.'],v:['Dluh u mafie je splacený. Telefon snad konečně zmlkne.','Zaplaceno do koruny. Snad už je s mafií konec.']},
+ {t:['Mafie po čase přestala volat. Prý našla jiného trenéra.'],v:['Mafie po čase přestala volat. Prý našla jiný klub.','Telefony z neznámých čísel utichly. Zdá se, že mafie má jiné starosti.']}
+];
+(function(){const _an=addNews;addNews=function(ic,t){try{if(typeof t==='string'&&(t.indexOf('„')>=0||/neznámí muži|Mafie po čase|sázkařské mafie/.test(t)))t=vRewrite(V_NEWS,t,'news',{});}catch(e){}return _an.apply(this,[ic,t].concat([].slice.call(arguments,2)));};})();
+
+// --- chat sázkařů: víc hlášek ---
+const CH_ADD={
+ start:['Dneska to cítím, {tip} za {odds}. Nevěřte mi.','Tiket podán, {stake} na {tip}. Jdeme na to.','Sedím u streamu, pivo v ruce, {tip}. Ať to stojí za to.','Kdo jede {h}? Kdo {a}? Ozvěte se, ať vím, s kým se budu hádat.','{stake} na {tip}. Jestli to nevyjde, prodávám kolo.','Zase sázím za poslední peníze. {tip}, kurz {odds}.'],
+ start_fan:['{c} do toho! Vsadil jsem {stake} a srdce k tomu.','Za {c} dýchám, za {c} sázím. {stake}.','Jestli dneska {c} nevyhraje, jdu kopat sám.'],
+ start_troll:['Vsadil jsem na {tip}, jen abych vás mohl potom zesměšňovat.','Pánové, připravte si kapesníčky.'],
+ start_pes:['{tip}. Stejně to zase posrou, znám je.','Dneska prohraju, cítím to v kostech. {tip}.'],
+ goal_good:['GÓÓÓL! {p}! Do prdele, to je krása!','{p}, ty jsi bůh! Tiket žije!','Kurva, to byl gól! {tm} jede!','No konečně! Já věděl, že {p} to tam dá!','Ano! Ano! ANO! {score}!','To je ono! Tohle jsem chtěl vidět!','{p} tě miluju! Hned ti posílám pusu.','Hahaha, tak kdo se tady smál? {score}!','Takhle se to dělá! {tm} do toho!','Gól! Už jen ať to dotáhnou.'],
+ goal_bad:['Do prdele! Kdo tam pustil {p}?!','Kurva, to snad ne. Obrana jak ze sýra.','To je hovado, ten náš stoper. Spí!','{p}… kéž bys zakopl o vlastní tkaničku.','Ne, ne, ne. Tohle je vražda tiketu.','Tak to je konec. Gólman z okresu.','Do háje s tím! {score}, to nemyslí vážně.','Kdo to trénuje?! Bránit neumí nikdo!','Sbohem, {stake}. Bylo mi s tebou dobře.','To je hanba! Ani si to nezaslouží!','Ten gól má na svědomí náš trenér, ne {p}.','Mám chuť hodit ovladač do televize.'],
+ goal_neu:['Gól! {p} za {tm}. Mně je to fuk, ale pěkný.','{score}. Zápas se rozjíždí.','Tak tohle je fotbal, ne nuda.','{p} se trefil. Dobrý.'],
+ lategoal_good:['V {min}. minutě! Kurva, já brečím!','Takhle pozdě?! To je nejlepší den mýho života!','{p} v závěru! Tiket jde do pokladny!','Na poslední chvíli! Mám infarkt, ale šťastnej!'],
+ lategoal_bad:['V {min}. minutě?! Do prdele, to je zlodějna!','Tohle mě zabije. Takhle pozdě?!','Ne, to snad ne… {p} v závěru. Jdu spát.','Kurva, zase na konci. Pokaždý!'],
+ miss_good:['Hahaha, {p} by netrefil ani vrata od stodoly.','Vedle! Díky, {p}.','Uff. Tohle mohl být průšvih.'],
+ miss_bad:['{p}, ty dřevo! To musí být gól!','Do prdele, odtamtud dá gól i moje babička!','Jak to proboha nedal?!','Tohle je hovado, ne útočník.'],
+ save_good:['{k}, ty jsi zeď!','Chytá jak drak! Díky, {k}.','Bůh v bráně, {k}!'],
+ save_bad:['Kurva, {k} chytá i to, co se chytit nedá.','Ten gólman má magnet v rukavicích.','Proč zrovna dneska musí {k} chytat jak Buffon?'],
+ post_good:['Tyčka! Fotbalový bůh je s námi.','Tyč! Díky, díky, díky.'],
+ post_bad:['Tyčka, do prdele! Centimetr!','Zase tyč! Já tenhle sport nesnáším.'],
+ red_good:['Červená! Konečně, ten řezník měl jít ven dávno.','Sbohem, {p}! Teď je to naše.','Výborně, hrajou o deseti!'],
+ red_bad:['Červená?! Rozhodčí je zloděj!','To je skandál, kolik mu dali?!','{p}, ty idiote, co to děláš?!','Sudí je kupenej, to vidí každej.'],
+ yel:['Žlutá pro {p}. Ať se trochu krotí.','{p} má žlutou. Další faul a jde.','Sudí rozdává karty jak na pokeru.'],
+ sub:['{pin} za {pout}? Trenér je génius, nebo idiot. Uvidíme.','Konečně střídá. {pout} byl dneska tragický.','{pin} jde na hřiště. Ať něco předvede.','Střídat {pout}? Vždyť byl jediný, kdo hrál!'],
+ ht_good:['Poločas a jsem v klidu. Zatím.','Přestávka. Jdu pro pivo, zatím to sedí.','Takhle ať to dohrajou.'],
+ ht_bad:['Poločas. Kurva, tohle se musí zlepšit.','Kdyby měl trenér koule, střídá tři hráče.','Takhle ne, pánové. Takhle fakt ne.','Ve druhém poločase chci vidět fotbal, ne procházku.'],
+ ht_neu:['Poločas. Nic moc, ale nic není ztraceno.','Přestávka, {score}. Zatím šedivé.','Dvacet minut nudy a pak dva náznaky. Hezký.'],
+ late_good:['Ještě pár minut, vydržte! Prosím!','Už jen ať nikdo nic neposere.','Zavřete to tam, kurva, ať je klid!'],
+ late_bad:['Potřebuju zázrak. Nebo dva.','Už nevěřím. Ale kouká se dál.','Dejte aspoň jeden, vy lemry!'],
+ odds:['Kurz na domácí je teď {lh}. Někdo něco ví?','Kurzy lítají jak blázen: {lh} – {lx} – {la}.','Ty kurzy mi dělají vrásky. {lo} na můj tip.','Bookmakeři se zbláznili. {lh}/{lx}/{la}.'],
+ amb_good:['Jde to podle plánu. Já to říkal.','Kdo nevěřil, ať se teď stydí.','Tenhle tiket mi zaplatí dovolenou.','Klid, kluci, to je moje.'],
+ amb_bad:['Proč já vždycky vsadím na ty lemry?','Mám pocit, že hrajou proti mně osobně.','Tohle už nevydržím. Kdo mi půjčí na další tiket?','Hrajou jak důchodci na procházce.','To je fotbal pro slepé.','Kurva, ať se aspoň snaží.'],
+ amb_neu:['Zatím nic, ale bude to.','Nuda. Probuďte se tam!','Hraje se, ale bez šancí.','Čekám na něco pořádného.','Tak co, kluci, kdo věří svýmu tipu?'],
+ amb_fan:['Pojďte, {c}! Jedeme!','{c} je jediná láska, kurva!','Celej stadion řve a my tu sedíme u telefonu.'],
+ amb_troll:['Vy se tu hádáte a já jen žeru popcorn.','Za pět minut tu někdo bude brečet. Sázím na to.','Kdo tady prohraje nejvíc? Tipuju tebe.'],
+ amb_pes:['Stejně to skončí špatně. Jako vždycky.','Nedělejte si naděje, prosím vás.'],
+ amb_stat:['Podle xG {xg} by to mělo vypadat jinak.','Střely {sh}. Čísla neodpovídají skóre.'],
+ amb_vet:['Za mých časů se hrálo ostřeji.','Tohle už jsem viděl stokrát. Klid.'],
+ amb_opt:['Věřím, kluci! Bude to dobré!','Pohoda, ještě je času dost.'],
+ amb_nov:['Je normální, že se tak nervuju?','Ještě se v tom učím. Proč se tu všichni hádají?'],
+ ft_good:['Konec! Peníze doma! Kdo chce pivo?','Ha! Kdo se smál, ten teď pláče. {win} je moje!','Vyhrál jsem, kurva! Konečně!','Tak, a je to. Já to celou dobu říkal.','Výplata! Kluci, dneska platím.','Hotovo. Tiket zelený jak tráva.'],
+ ft_bad:['Konec. Do prdele s tímhle sportem.','Zase jsem prodělal. Už nikdy nesázím. Do zítřka.','Hanba. Mrzí mě každá koruna.','Kurva, kurva, kurva. Nic jinýho říct nejde.','Tohle bylo naposled. Asi.','Smažu tuhle apku. Fakt.'],
+ r_agree:['@{to} přesně! Konečně někdo normální.','@{to} souhlas, brácho.','@{to} jo, tohle sedí.','@{to} podepisuju.'],
+ r_banter:['@{to} drž hubu, ještě se nehraje ani hodina.','@{to} ty tak víš houby.','@{to} to říká ten správnej.','@{to} počkej, až tě to semele.','@{to} ty fandíš i vlastní babičce, když prohrává.','@{to} jasně, a já jsem papež.'],
+ r_troll:['@{to} hahaha, ty jsi to dneska zase vyhrál.','@{to} pláčeš už teď?','@{to} já tvůj tiket rovnou tisknu na zeď hanby.','@{to} a kolik ses vsadil? Ať se pobavím.'],
+ r_vet:['@{to} chlapče, tohle jsem prožil stokrát.','@{to} klid, zápas má devadesát minut.','@{to} ještě se něco stane, uvidíš.'],
+ r_nov:['@{to} neboj, časem se to naučíš. Prohrávat hlavně.','@{to} vítej v klubu, tady se pláče denně.'],
+ r_pes:['@{to} neraduj se, ještě to otočí.','@{to} já bych to tak nehrotil.']
+};
+// hádky a navazující výměny
+const CH_TH={
+ mock:['@{to} tak co, pořád věříš na {ttip}? 😂','@{to} hahaha, kde je teď ta tvoje jistota?','@{to} brečíš? Já ti říkal, že {ttip} je blbost.','@{to} jdi si koupit kapesníky.','@{to} tvůj tiket právě umřel. Upřímnou soustrast.','@{to} a kdo tady říkal, že to je jistota?','@{to} to bolí, co? Za {stake} by sis koupil něco užitečnýho.','@{to} sbal si to, dneska tvůj den není.','@{to} jestli chceš, dám ti tip na příště. Zadarmo.','@{to} ty a tvoje „jistota“. Hahaha.'],
+ angry:['@{to} drž hubu, ještě se hraje.','@{to} ty jsi taky kurva odborník, co?','@{to} počkej, až to otočí, pak si promluvíme.','@{to} běž do prdele, máš štěstí a nic víc.','@{to} tvůj tip je čistej hazard, ne fotbal.','@{to} ty se raduj, já se směju poslední.','@{to} ještě jedno slovo a…','@{to} vyhraj si tu svou almužnu a mlč.'],
+ defend:['@{to} {tip} pořád dává smysl, xG mluví jasně.','@{to} jeden gól nic neznamená. Uvidíme na konci.','@{to} já si za svým tipem stojím. Klidně ještě přisadím.','@{to} pamatuj si to, až to otočí.','@{to} to byla náhoda, ne fotbal.'],
+ ref:['@{to} to není tvoje zásluha, to je sudí. Zloděj!','@{to} jasně, když píská vaši stranu. Kupenej!','@{to} ten rozhodčí by měl dostat doživotí.','@{to} bez sudího bys teď plakal ty.'],
+ coach:['@{to} kdyby náš trenér nebyl hovado, tak to tam máme.','@{to} za tohle může trenér, ne hráči.','@{to} s takovou sestavou bych prohrál i já.'],
+ join_g:['@{to} haha, nech ho, ať si pobrečí.','@{to} přesně, já jsem to taky říkal.','Přidávám se. {to}, dneska tvůj den není.','@{to} kapesník ti nepošlu, ale soustrast jo.'],
+ join_b:['@{to} nech ho, ještě není konec.','@{to} klid, taky jsem v mínusu.','Kluci, nehádejte se. Stejně to otočí.','@{to} jo, ten sudí je fakt divnej.'],
+ calm:['Kluci, klid. Je to jen fotbal.','Uklidněte se, ještě se hraje.','Hádáte se jak u piva. Sledujte zápas.','Vy dva se sejděte po zápase a vyřiďte si to.'],
+ mock2:['@{to} jo jo, už jsem slyšel. Sbohem, tvůj tiket.','@{to} nervy, co? 😂','@{to} řekni mi to, až skončí zápas.','@{to} hlavně se nerozbreč.'],
+ arg:['@{to} {ttip}? Vážně? To je nejhorší tip dne.','@{to} na {ttip} bych nevsadil ani korunu.','@{to} vsadit na {ttip} chce fakt odvahu. Nebo hloupost.','@{to} hej, ty si fakt myslíš, že {ttip}?','@{to} ještě můžeš tiket smazat, než bude pozdě.'],
+ argr:['@{to} a ty jsi kdo? Expert z hospody?','@{to} uvidíme na konci, chytráku.','@{to} já mám {tip} za {odds}, ty máš jen kecy.','@{to} sázím dýl, než ty chodíš.','@{to} nech si ty rady, prosím tě.','@{to} drž se svýho a mně dej pokoj.'],
+ sub:['To střídání je katastrofa. Trenér je hovado.','Proč stahuje zrovna jeho?! Nechápu.','Konečně střídá, už jsem myslel, že usnul.'],
+ subr:['@{to} trenér ví, co dělá. Ty ne.','@{to} souhlas, trenér je mimo.','@{to} počkej, ten nový to rozsekne.']
+};
+(function(){for(const k in CH_ADD){CH[k]=(CH[k]||[]).concat(CH_ADD[k]);}for(const k in CH_TH)CH['th_'+k]=CH_TH[k];})();
+const CH_OP={fan:['Kurva.','Do prdele!','Ty vole.','No ty kráso.'],troll:['Hahaha.','Ty jo.','Kluci, kluci.'],pes:['Do háje.','Bože.','Jak jinak.','Sakra.'],opt:['Pohoda.','Hele.'],vet:['Hele.','Povím vám…'],stat:['Čistě věcně:','Podle čísel:'],nov:['Hm.','Jéžiš.']};
+const CH_CL={fan:['Kurva!','Hanba!','Do prdele.'],troll:['😂','Brečte.','Hahaha.'],pes:['Typický.','Jak vždycky.'],opt:['💪','Věřím!'],vet:['Pamatujte si to.'],stat:['Čísla nelžou.'],nov:['😅']};
+// anti-repeat napříč zápasy + otvíráky/zavírače
+(function(){const _cp=chPool;chPool=function(u,key){const out=_cp(u,key);const rec=S.chRec||[];if(!rec.length)return out;const f=out.filter(x=>!rec.includes(x[0]));return f.length?f:out;};
+ const _cs=chSay;chSay=function(M,u,key,extra,force){const C=MS&&MS.chat;const n0=C?C.lines.length:0;const last=C?C.lines.slice(-30).map(l=>l.t):[];
+  let r=_cs(M,u,key,extra,force);if(!r||!C||C.lines.length<=n0&&C.lines.length<60)return r;let L=C.lines[C.lines.length-1];
+  if(last.includes(L.t)){C.lines.pop();C.mc[M.min]=Math.max(0,(C.mc[M.min]||1)-1);r=_cs(M,u,key,extra,true);if(!r)return r;L=C.lines[C.lines.length-1];}
+  try{S.chRec=S.chRec||[];const ids=Object.keys(C.used);const nid=ids[ids.length-1];if(nid&&!S.chRec.includes(nid)){S.chRec.push(nid);if(S.chRec.length>160)S.chRec.splice(0,S.chRec.length-160);}}catch(e){}
+  const pk=u.per==='fanH'||u.per==='fanA'?'fan':u.per;
+  if(!/^@/.test(L.t)&&key.indexOf('th_')!==0){const x=RNG();C.oc=C.oc||[];
+   if(x<0.22&&CH_OP[pk]){const o=vPick(CH_OP[pk],'chop_'+pk,3);if(!C.oc.slice(-4).includes(o)&&!L.t.startsWith(o.replace(/[.!:…]+$/,''))){L.t=o+' '+L.t;C.oc.push(o);}}
+   else if(x>0.82&&CH_CL[pk]){const o=vPick(CH_CL[pk],'chcl_'+pk,3);if(!C.oc.slice(-4).includes(o)&&!/[😂💪😅]$/.test(L.t)){L.t=L.t.replace(/\s*$/,'')+' '+o;C.oc.push(o);}}}
+  return r;};})();
+// hádky po událostech
+function chThread(M,s,kind){const C=MS.chat;const live=C.users.filter(u=>!u.co);if(live.length<2)return;
+ const now=chProbs(M);const r=live.map(u=>({u,d:now[u.mk]-(u.p!=null?u.p:now[u.mk])})).filter(x=>Math.abs(x.d)>0.04);
+ const G=r.filter(x=>x.d>0).sort((a,b)=>b.d-a.d).map(x=>x.u),B=r.filter(x=>x.d<0).sort((a,b)=>a.d-b.d).map(x=>x.u);
+ if(!G.length||!B.length)return;const w=G[0].per==='troll'||RNG()<0.6?G[0]:pick(G);const l=B[0];
+ if(!chSay(M,w,'th_mock',{to:l.n,ttip:chTip(M,l),stake:fmtMoney(l.stake)},true))return;
+ const rk=kind==='red'||kind==='var'||kind==='pen'?(RNG()<0.7?'th_ref':'th_angry'):RNG()<0.25?'th_coach':RNG()<0.35?'th_defend':'th_angry';
+ chSay(M,l,rk,{to:w.n},true);const x=RNG();
+ if(x<0.35){const o=live.filter(u=>u!==w&&u!==l);if(o.length){const c=pick(o);const gw=G.includes(c);chSay(M,c,gw?'th_join_g':'th_join_b',{to:gw?l.n:w.n},true);}}
+ else if(x<0.6)chSay(M,w,'th_mock2',{to:l.n},true);
+ else if(x<0.72){const o=live.filter(u=>u!==w&&u!==l&&(u.per==='vet'||u.per==='opt'||u.per==='stat'));if(o.length)chSay(M,pick(o),'th_calm',{},true);}}
+(function(){const _co=chOnEvent;chOnEvent=function(M,e){_co(M,e);try{const C=MS.chat;if(!C||M.ended&&e.t!=='ft')return;
+  if(e.t==='goal'&&RNG()<0.7)chThread(M,e.s,'goal');else if((e.t==='red'||e.t==='var'||e.t==='pen')&&RNG()<0.45)chThread(M,e.s,e.t);
+  else if(e.t==='sub'&&RNG()<0.1){const live=C.users.filter(u=>!u.co);const a=pick(live);if(chSay(M,a,'th_sub',{})&&RNG()<0.6){const b=pick(live.filter(u=>u!==a));if(b)chSay(M,b,'th_subr',{to:a.n},true);}}}catch(err){}};
+ const _ce=chatOnEvents;chatOnEvents=function(M,evs){_ce(M,evs);try{if(!MS||!MS.chat||M.ended||S.settings.betChat===false)return;const C=MS.chat;const m=M.min;
+  if(m>5&&m<88&&m-(C.argM||-20)>12&&RNG()<0.028){const live=C.users.filter(u=>!u.co);const a=pick(live);const o=live.filter(u=>u!==a&&u.mk!==a.mk);if(!o.length)return;const b=pick(o);
+   C.argM=m;if(chSay(M,a,'th_arg',{to:b.n,ttip:chTip(M,b)},true)){chSay(M,b,'th_argr',{to:a.n},true);if(RNG()<0.45)chSay(M,a,'th_mock2',{to:b.n},true);}}}catch(err){}};})();
+
+// --- ✏️ Editor hráčů ---
+const ED_F=[['ovr','Celkové hodnocení',1,99],['pot','Potenciál',1,99],['age','Věk',15,45],['cond','Kondice',0,100],['mor','Morálka',0,100],['hap','Spokojenost',0,100],['frm','Forma (průměrná známka)',1,10],['cy','Smlouva do roku',0,0],['wm','Mzda (násobek)',0.3,5]];
+function edGet(p,k){if(k==='age')return ageOf(p);if(k==='frm'){const f=p.form||[];return f.length?Math.round(f.reduce((a,b)=>a+b,0)/f.length*2)/2:6.5;}
+ if(k==='hap')return p.hap!=null?Math.round(p.hap):70;if(k==='cy')return p.cy||S.season+2;if(k==='wm')return Math.round((p.wm||1)*10)/10;return Math.round(p[k]||0);}
+function edSet(p,k,v){const f=ED_F.find(x=>x[0]===k);let lo=f?f[2]:0,hi=f?f[3]:99;if(k==='cy'){lo=S.season;hi=S.season+8;}v=clamp(v,lo,hi);
+ if(k==='age')p.by=S.season-Math.round(v);else if(k==='frm'){const x=Math.round(v*2)/2;p.form=[x,x,x,x,x];}else if(k==='wm')p.wm=Math.round(v*10)/10;
+ else{p[k]=Math.round(v);if(k==='ovr'&&p.pot<p.ovr)p.pot=p.ovr;if(k==='pot'&&p.pot<p.ovr)p.pot=p.ovr;}p.ed=1;}
+function edAfter(p){try{const c=S.clubs[p.cl];if(c&&p.cl!==S.clubId&&!c.tmp)c.rep=Math.round(teamStrength(p.cl).ovr);}catch(e){}saveGame();}
+function edStep(id,k,d){const p=P(id);if(!p)return;if(k.indexOf('a')===0&&k.length<=2){const i=+k.slice(1);p.a[i]=clamp(Math.round(p.a[i]+d),1,99);p.ed=1;}else edSet(p,k,edGet(p,k)+d);edAfter(p);edSheet(id);}
+function edQuick(id,q){const p=P(id);if(!p)return;
+ if(q==='p5'){p.a=p.a.map(v=>clamp(v+5,1,99));p.ovr=clamp(p.ovr+5,1,99);p.pot=Math.max(p.pot,p.ovr);}
+ else if(q==='max'){p.a=p.a.map(()=>99);p.ovr=99;p.pot=99;}
+ else if(q==='all'){p.a=p.a.map(v=>clamp(v+10,1,99));p.ovr=clamp(p.ovr+10,1,99);p.pot=clamp(Math.max(p.pot+10,p.ovr),1,99);p.cond=100;p.mor=100;p.hap=100;p.form=[8,8,8,8,8];}
+ else if(q==='heal'){p.inj=0;p.sus=0;p.cond=100;}
+ else if(q==='young'){p.by=S.season-Math.max(15,ageOf(p)-5);}
+ else if(q==='ctr'){p.cy=S.season+5;}
+ p.ed=1;edAfter(p);toast('Uloženo ✓');edSheet(id);}
+function edPos(id,which,v){const p=P(id);if(!p)return;if(which===1){if(POS_FULL[v])p.pos=v;}else{p.pos2=v&&POS_FULL[v]&&v!==p.pos?v:undefined;if(!p.pos2)delete p.pos2;}p.ed=1;edAfter(p);edSheet(id);}
+function edRow(id,k,lbl,val,sm){const b=(d,t)=>`<button class="btn ghost edb" onclick="edStep('${id}','${k}',${d})">${t}</button>`;const s=sm?[0.5,0.5]:k==='wm'?[0.1,0.5]:[1,5];
+ return `<div class="edr"><div class="edl">${lbl}</div><div class="edc">${b(-s[1],'−'+String(s[1]).replace('.',','))}${b(-s[0],'−'+String(s[0]).replace('.',','))}<b class="edv">${String(val).replace('.',',')}</b>${b(s[0],'+'+String(s[0]).replace('.',','))}${b(s[1],'+'+String(s[1]).replace('.',','))}</div></div>`;}
+function edSheet(id){const p=P(id);if(!p)return;const c=S.clubs[p.cl];const L=p.pos==='GK'?ATTR_GK:ATTR_CZ;
+ const opt=(sel,none)=>(none?`<option value="">— žádná —</option>`:'')+Object.keys(POS_FULL).map(k=>`<option value="${k}" ${k===sel?'selected':''}>${k} · ${POS_FULL[k]}</option>`).join('');
+ const sc=document.querySelector('.modal')?document.querySelector('.modal').scrollTop:0;
+ modal(`<h2>✏️ Editor hráčů</h2><div class="hero" style="margin-bottom:8px">${posB(p.pos)}<div style="flex:1;min-width:0"><b>${esc(p.n)}</b><div class="small mut">${c?esc(c.n):'bez klubu'} · ${ageOf(p)} let</div></div>${ovrB(p.ovr)}</div>
+ <div class="grid3" style="margin-bottom:8px"><div class="tile"><div class="k">Hodnota</div><div class="v" style="font-size:13px">${fmtMoney(playerValue(p))}</div></div><div class="tile"><div class="k">Mzda/týden</div><div class="v" style="font-size:13px">${fmtMoney(playerWage(p))}</div></div><div class="tile"><div class="k">Potenciál</div><div class="v" style="font-size:13px">${p.pot}</div></div></div>
+ <div class="grid2" style="gap:6px;margin-bottom:8px"><button class="btn gold" onclick="edQuick('${id}','all')">⚡ Vylepšit vše</button><button class="btn ghost" onclick="edQuick('${id}','p5')">+5 ke všemu</button><button class="btn ghost" onclick="edQuick('${id}','max')">🔝 Max (99)</button><button class="btn ghost" onclick="edQuick('${id}','heal')">🩹 Vyléčit a zregenerovat</button><button class="btn ghost" onclick="edQuick('${id}','young')">⏪ Omladit o 5 let</button><button class="btn ghost" onclick="edQuick('${id}','ctr')">📝 Smlouva na 5 let</button></div>
+ <div class="card" style="padding:8px 10px"><div class="small" style="margin-bottom:4px"><b>Základ</b></div>${ED_F.map(f=>edRow(id,f[0],f[1],edGet(p,f[0]),f[0]==='frm')).join('')}</div>
+ <div class="card" style="padding:8px 10px"><div class="small" style="margin-bottom:4px"><b>Atributy</b></div>${p.a.map((v,i)=>edRow(id,'a'+i,L[i],v)).join('')}</div>
+ <div class="card" style="padding:8px 10px"><div class="small" style="margin-bottom:4px"><b>Pozice</b></div><label class="tiny mut">Hlavní pozice</label><select class="edsel" onchange="edPos('${id}',1,this.value)">${opt(p.pos)}</select><label class="tiny mut">Vedlejší pozice</label><select class="edsel" onchange="edPos('${id}',2,this.value)">${opt(p.pos2,1)}</select></div>
+ <div class="tiny mut" style="margin:4px 2px 8px">Změny se ukládají hned a platí i v zápasech. Hodnota a mzda se přepočítají samy.</div>
+ <div class="grid2" style="gap:6px"><button class="btn ghost" onclick="closeModal();edList()">👥 Jiný hráč</button><button class="btn gold" onclick="closeModal();playerSheet('${id}')">Hotovo</button></div>`);
+ const m=document.querySelector('.modal');if(m&&sc)m.scrollTop=sc;}
+function edList(q){UI.edq=q!=null?q:(UI.edq||'');const s=UI.edq.trim().toLowerCase();let L;
+ const fold=x=>x.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+ if(!s)L=clubPlayers(S.clubId).slice().sort((a,b)=>b.ovr-a.ovr);else{const f=fold(s);L=Object.values(S.players).filter(p=>fold(p.n).includes(f)).sort((a,b)=>b.ovr-a.ovr).slice(0,40);}
+ const rows=L.map(p=>{const c=S.clubs[p.cl];return `<button class="btn ghost w100 edli" onclick="closeModal();edSheet('${p.id}')">${posB(p.pos)}<span style="flex:1;min-width:0;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.n)}<span class="tiny mut"> · ${c?esc(c.s||c.n):''}</span></span>${p.ed?'<span class="tag">upraveno</span>':''}<b>${p.ovr}</b></button>`;}).join('')||'<div class="empty">Nikdo takový.</div>';
+ if(document.getElementById('edres')&&q!=null){document.getElementById('edres').innerHTML=rows;return;}
+ modal(`<h2>✏️ Editor hráčů</h2><div class="small mut" style="margin-bottom:6px">Vyber hráče z kádru, nebo vyhledej kohokoli z databáze.</div><input id="edq" class="edsel" placeholder="Hledat hráče podle jména…" value="${esc(UI.edq)}" oninput="edList(this.value)"><div id="edres" style="margin-top:6px">${rows}</div>`);}
+function edCard(){return `<div class="card"><h3>✏️ Editor hráčů</h3><div class="small mut" style="margin:0 0 8px">Uprav atributy, hodnocení, potenciál, věk, pozice, formu i smlouvu kteréhokoli hráče.</div><button class="btn gold w100" onclick="edList('')">✏️ Otevřít editor hráčů</button></div>`;}
+(function(){const _ps=playerSheet;playerSheet=function(id){const r=_ps.apply(this,arguments);try{const m=document.querySelector('.modal');if(m&&P(id)&&!m.querySelector('.edopen')){const d=document.createElement('div');d.innerHTML=`<button class="btn ghost w100 edopen" style="margin-top:8px" onclick="closeModal();edSheet('${id}')">✏️ Editor hráčů</button>`;m.appendChild(d.firstChild);}}catch(e){}return r;};
+ const _rc=renderClub;renderClub=function(){const h=_rc.apply(this,arguments);try{const k='<div class="card"><h3>⚙️ Nastavení a uložení';if(typeof h==='string'&&(UI.clubTab||'fin')==='set'&&h.indexOf(k)>=0)return h.replace(k,edCard()+k);}catch(e){}return h;};})();
 
 
 // ---------- boot ----------
