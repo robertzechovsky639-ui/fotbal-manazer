@@ -181,3 +181,10 @@ table{width:100%;border-collapse:collapse}
 .edsel{width:100%;min-height:44px;margin:3px 0 8px;border-radius:10px;padding:0 10px;font-size:16px;background:rgba(255,255,255,.06);color:inherit;border:1px solid rgba(255,255,255,.15)}
 .edsel option{color:#000}
 .edli{display:flex!important;align-items:center;gap:8px;margin-bottom:6px;min-height:44px}
+/* v10b: bezpečná zóna nahoře (výřez/stavový řádek) a stále viditelný křížek */
+.modal-bg{box-sizing:border-box;padding-top:calc(10px + env(safe-area-inset-top,0px))}
+.modal{max-height:100%;box-sizing:border-box}
+.mclose{position:-webkit-sticky;position:sticky;top:0;z-index:6;display:flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;background:rgba(6,34,24,.92);border:1px solid var(--line);box-shadow:0 2px 10px rgba(0,0,0,.35);color:#e8f5ee}
+.edhead{position:-webkit-sticky;position:sticky;top:-16px;z-index:5;margin:-16px -14px 0;padding:16px 14px 2px;background:#134f38;border-bottom:1px solid var(--line)}
+.edhead .edsel{margin-bottom:6px}
+
