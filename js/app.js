@@ -4197,6 +4197,60 @@ if(typeof window!=='undefined')window.addEventListener('resize',()=>{try{m2Size(
 /* komentář: animuj jen nové řádky (dřív při každé minutě problikl celý seznam) */
 const _m2Upd=updLive;updLive=function(){const r=_m2Upd.apply(this,arguments);try{if(MS&&MS.M&&MS.M.wx&&typeof wxText==='function'){const w=document.getElementById('mvwx');if(w){const M=MS.M;const f=M.wxF&&M.wxF.k!==M.wx.k&&WX[M.wxF.k]?` · předpověď ${WX[M.wxF.k].ic}`:'';const t=wxText(M.wx)+f;if(w.textContent!==t){w.textContent=t;if(MS._wxk&&MS._wxk!==M.wx.k){w.classList.remove('wxchg');void w.offsetWidth;w.classList.add('wxchg');}}MS._wxk=M.wx.k;}}}catch(e){}try{if(MS&&MS.tab==='kom'){const b=document.getElementById('mvbody');const n=MS.M.ev.length,pv=MS._evn==null?n:MS._evn;MS._evn=n;const nw=Math.max(0,n-pv);if(b)Array.prototype.forEach.call(b.children,(c,i)=>{if(i>=nw)c.style.animation='none';});}}catch(e){}return r;};
 
+/* v14: hra ve středu pole ve 2D, nastavení, trest pro trenéra, vývoj kurzů, zprávy před zápasem */
+function m2Ks(M,st,s){const r=[];const gk=m2Gk(M,s);M.sides[s].xi.forEach((id,k)=>{if(id&&k!==gk)r.push(k);});return r;}
+function m2Best(M,st,s,f){const ks=m2Ks(M,st,s);let b=ks[0],bv=-1e9;ks.forEach(k=>{const v=f(m2PlayerXY(st,s,k),k);if(v>bv){bv=v;b=k;}});return b;}
+function m2FillKind(tx){tx=String(tx||'');
+ if(/křídl|centr|zámezí/i.test(tx))return 'wing';if(/protiútok/i.test(tx))return 'counter';if(/dlouh[éý] mí|za obranu/i.test(tx))return 'long';
+ if(/v obraně|ke gólmanovi|vracejí/i.test(tx))return 'back';if(/napad|presink/i.test(tx))return 'press';if(/přenáš|ze strany na stranu/i.test(tx))return 'switch';
+ if(/odražený|souboj/i.test(tx))return 'duel';if(/stoper|ustál/i.test(tx))return 'stop';if(/kombinuj|výměn|držení|trpělivě|přelévá|drží míč/i.test(tx))return 'combo';return '';}
+function m2Fill(M,st,e){if(e.t!=='fill'||e.s==null||e.ch||e.cer||e.gke||e.rd)return null;const k0=m2FillKind(e.tx);if(!k0)return null;
+ const s=e.s,o=1-s,dir=s===0?1:-1,sc=m2Scale(),att=x=>s===0?x:1-x,steps=[];const fx=p=>s===0?p.x:1-p.x;
+ const lbl=(tx,x,y)=>m2Ov(st,{tp:'lbl',tx,x,y,dur:1000});
+ const to=(sd,k,d,arc)=>{const p=m2PlayerXY(st,sd,k);st.pend={s:sd,k};st.poss=sd;st.car=null;m2Kick(st,p.x,p.y,d*sc,arc);};
+ const give=(sd,k)=>{st.poss=sd;st.pend=null;st.car={s:sd,k};};
+ const start=()=>{if(st.poss!==s||!st.car||st.car.s!==s){give(s,m2Best(M,st,s,p=>-Math.abs(fx(p)-0.45)));}};
+ steps.push({d:1,f:start});
+ if(k0==='wing'){const top=Math.random()<.5;let w;steps.push({d:650,f:()=>{w=m2Best(M,st,s,p=>fx(p)+Math.abs(p.y-0.5)*1.4);st.force[s][w]={x:att(0.8),y:top?0.08:0.92};to(s,w,600);}});
+  steps.push({d:900,f:()=>{st.force[s]={};st.car=null;st.pend=null;m2Kick(st,att(1.01),m2Rand(0.3,0.7),500*sc,1);lbl('Centr do zámezí',att(0.86),0.5);}});
+  steps.push({d:700,f:()=>{give(o,m2Gk(M,o));}});}
+ else if(k0==='counter'){let f;steps.push({d:500,f:()=>{f=m2Fwd(M,s);st.force[s][f]={x:att(0.74),y:m2Rand(0.35,0.65)};to(s,f,380);lbl('⚡ Protiútok',att(0.6),0.14);}});
+  steps.push({d:700,f:()=>{st.force[s]={};const d=m2Best(M,st,o,p=>-Math.hypot(p.x-st.ball.x,p.y-st.ball.y));to(o,d,300);}});}
+ else if(k0==='long'){steps.push({d:900,f:()=>{st.car=null;st.pend=null;m2Kick(st,att(0.93),m2Rand(0.2,0.8),700*sc,1);lbl('Dlouhý míč',att(0.7),0.12);}});
+  steps.push({d:600,f:()=>{give(o,m2Gk(M,o));}});}
+ else if(k0==='back'){steps.push({d:600,f:()=>{to(s,m2Best(M,st,s,p=>-fx(p)),450);}});steps.push({d:700,f:()=>{to(s,m2Gk(M,s),450);lbl('↩️ Zpět na gólmana',att(0.18),0.14);}});steps.push({d:400,f:()=>{}});}
+ else if(k0==='press'){steps.push({d:1,f:()=>{if(st.poss===s)give(o,m2Best(M,st,o,p=>(o===0?-p.x:p.x)));}});
+  steps.push({d:1300,f:()=>{const b=st.ball;m2Ks(M,st,s).map(k=>[Math.hypot(m2PlayerXY(st,s,k).x-b.x,m2PlayerXY(st,s,k).y-b.y),k]).sort((a,c)=>a[0]-c[0]).slice(0,3).forEach(([d,k],j)=>{st.force[s][k]={x:b.x-dir*0.03*(j+1)*-1,y:b.y+(j-1)*0.06};});lbl('🔥 Presink',b.x,Math.max(0.12,b.y-0.12));}});
+  steps.push({d:1,f:()=>{st.force[s]={};}});}
+ else if(k0==='switch'){steps.push({d:900,f:()=>{const y0=st.ball.y;const k=m2Best(M,st,s,p=>Math.abs(p.y-y0)-Math.abs(fx(p)-0.55));to(s,k,650,1);lbl('↔️ Přenesení hry',0.5,0.12);}});}
+ else if(k0==='duel'){steps.push({d:900,f:()=>{const b=st.ball;const d=m2Best(M,st,o,p=>-Math.hypot(p.x-b.x,p.y-b.y));st.force[o][d]={x:b.x+dir*0.02,y:b.y};lbl('⚔️ Souboj',b.x,Math.max(0.12,b.y-0.12));}});steps.push({d:1,f:()=>{st.force[o]={};give(s,st.car&&st.car.s===s?st.car.k:m2Best(M,st,s,p=>-Math.abs(fx(p)-0.5)));}});}
+ else if(k0==='stop'){steps.push({d:700,f:()=>{const f=m2Fwd(M,s);to(s,f,500);}});steps.push({d:600,f:()=>{const b=st.ball;const d=m2Best(M,st,o,p=>-Math.hypot(p.x-b.x,p.y-b.y));to(o,d,250);lbl('🛑 Odebráno',b.x,Math.max(0.12,b.y-0.12));}});}
+ else{const mids=()=>m2Ks(M,st,s).filter(k=>{const x=fx(m2PlayerXY(st,s,k));return x>0.3&&x<0.72;});for(let i=0;i<3;i++)steps.push({d:520,f:()=>{const ms=mids();const cur=st.car&&st.car.k;const c=ms.filter(k=>k!==cur);if(c.length)to(s,c[Math.floor(Math.random()*c.length)],380);if(i===0)lbl('🔁 Kombinace',0.5,0.12);}});}
+ return steps;}
+try{const _m2s14=m2Script;m2Script=function(M,st,e){try{const r=m2Fill(M,st,e);if(r)return r;}catch(err){}return _m2s14(M,st,e);};}catch(e){}
+/* realističtější nastavení podle toho, co se v poločase stalo */
+function v14AddCalc(M,h){const lo=h===0?0:45,hi=h===0?46:91;let g=0,sb=0,inj=0,va=0,cd=0,pn=0;(M.ev||[]).forEach(e=>{if(e.m<lo||e.m>=hi)return;if(e.t==='goal')g++;else if(e.t==='sub')sb++;else if(e.t==='inj')inj++;else if(e.t==='var')va++;else if(e.t==='yel'||e.t==='red')cd++;else if(e.t==='pen')pn++;});
+ const base=h===0?0.8+0.35*g+0.7*inj+0.9*va+0.15*cd+0.4*pn+Math.random()*1.2:1.6+0.35*g+0.25*Math.min(sb,5)+0.7*inj+0.9*va+0.15*cd+0.4*pn+Math.random()*1.4;
+ return Math.max(h===0?1:2,Math.min(h===0?5:8,Math.round(base)));}
+try{const _sm14=stepMinute;stepMinute=function(M){if(M&&!M.ended){if(!M._a0)M._a0=[(M.added||[])[0]||1,(M.added||[])[1]||3];
+  const h=M.half===1&&M.min===44?0:M.half===2&&M.min===89?1:-1;
+  if(h>=0&&!(M._a14||[])[h]){M._a14=M._a14||[];M._a14[h]=1;const inc=Math.max(0,(M.added[h]||0)-M._a0[h]);M.added[h]=Math.min(15,v14AddCalc(M,h)+inc);
+   const out=_sm14(M);if(!M.ended&&M.min===(h===0?45:90)){const ev={m:M.min,t:'fill',add14:M.added[h],tx:`⏱️ Čtvrtý rozhodčí ukazuje nastavení: +${M.added[h]} ${czPlural(M.added[h],'minuta','minuty','minut')}.`};const inEv=!out.length||M.ev.indexOf(out[out.length-1])>=0;out.push(ev);if(inEv&&M.ev.indexOf(ev)<0)M.ev.push(ev);}return out;}}
+ return _sm14(M);};}catch(e){}
+try{const _m2s14b=m2Script;m2Script=function(M,st,e){if(e&&e.add14)return [{d:1100,f:()=>{m2Ov(st,{tp:'lbl',tx:'⏱️ +'+e.add14,x:0.5,y:0.9,dur:1400});}}];return _m2s14b(M,st,e);};}catch(e){}
+/* zprávy z kabin před zápasem */
+function v14Hash(s){let h=7;for(const c of String(s))h=(h*31+c.charCodeAt(0))>>>0;return h;}
+function v14News(F){const opp=F.h===S.clubId?F.a:F.h;const oc=S.clubs[opp]||{};const pl=c=>(typeof clubPlayers==='function'?clubPlayers(c):[]);
+ const miss=c=>pl(c).filter(p=>p&&(p.inj>0||p.sus>0)).sort((a,b)=>b.ovr-a.ovr).slice(0,3);
+ const ln=p=>`${esc(p.n)} <span class="mut">(${p.sus>0?'trest':'zranění'+(p.inj>0?', ještě '+p.inj+' '+czPlural(p.inj,'týden','týdny','týdnů'):'')})</span>`;
+ const mo=miss(opp),mm=miss(S.clubId);const rows=[];
+ rows.push(mo.length?`<div class="small" style="padding:2px 0">❌ Soupeři chybí: ${mo.map(ln).join(', ')}</div>`:`<div class="small" style="padding:2px 0">✅ Soupeř má k dispozici kompletní kádr.</div>`);
+ if(mm.length)rows.push(`<div class="small" style="padding:2px 0">🩹 Nám chybí: ${mm.map(ln).join(', ')}</div>`);
+ const top=pl(opp).filter(available).sort((a,b)=>b.ovr-a.ovr);const r=v14Hash(F.h+'|'+F.a+'|'+(S.week||0)+'|'+(S.season||0));
+ if(top.length>=4){const p=top[r%4],q=top[(r>>3)%top.length];const T=[`${p.n} podle místních médií v týdnu trénoval jen individuálně, nakonec by ale měl nastoupit.`,`Trenér soupeře na tiskovce chválil formu hráče ${q.n}.`,`${p.n} se vrací do sestavy po odpočinku v minulém kole.`,`Soupeř v týdnu trénoval hlavně standardní situace.`,`Na tréninku soupeře byl vidět i ${q.n}, který se dával dohromady po drobném zranění.`,`Domácí média čekají, že soupeř začne opatrněji a bude hrát na brejky.`];rows.push(`<div class="small mut" style="padding:2px 0">🗞️ ${esc(T[(r>>6)%T.length])}</div>`);}
+ return `<div class="card" style="padding:10px 12px"><h3>Zprávy z kabin</h3>${rows.join('')}</div>`;}
+try{const _pre14=v4PreHtml;v4PreHtml=function(F){let a='';try{a=v14News(F);}catch(e){}return a+_pre14(F);};}catch(e){}
+
 
 // ---------- boot ----------
 window.FM_DATA_VER='71564f09';
