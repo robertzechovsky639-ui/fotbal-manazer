@@ -4357,8 +4357,9 @@ function v14PoisGt(mu,n){let c=0;for(let k=0;k<=n;k++)c+=v14Pf(mu,k);return 1-c;
 function v14Shooters(cid){try{const w={ST:1,CF:1,FW:1,LW:0.55,RW:0.55,AM:0.5,CAM:0.5,LM:0.3,RM:0.3,CM:0.18,DM:0.08,CDM:0.08,LB:0.06,RB:0.06,LWB:0.07,RWB:0.07,CB:0.07,GK:0};
  const ps=clubPlayers(cid).filter(available).sort((a,b)=>b.ovr-a.ovr).slice(0,14);const sc=ps.map(p=>({p,w:(w[p.pos]!=null?w[p.pos]:0.2)*Math.pow(1.06,p.ovr-70)}));const T=sc.reduce((a,b)=>a+b.w,0)||1;return sc.map(x=>({p:x.p,s:x.w/T})).sort((a,b)=>b.s-a.s);}catch(e){return [];}}
 const V14_MC={};
-function v14Ext(h,a,mid){const key=S.season+'|'+(S.round||0);const C=V14_MC[mid];if(C&&C.k===key)return C.o;
- let [xh,xa]=xgPair(strOf(h),strOf(a));xh*=V14_GK;xa*=V14_GK;const M=v14Mat(xh,xa),H=v14Mat(xh*0.47,xa*0.47,1.05);const o={};const od=(p,mg)=>roundOdd(1/(Math.max(0.005,p)*mg));
+function v14Ext(h,a,mid,td){const key=S.season+'|'+(S.round||0)+'|'+(td==null?'':td.toFixed(3));const C=V14_MC[mid];if(C&&C.k===key)return C.o;
+ let [xh,xa]=xgPair(strOf(h),strOf(a));xh*=V14_GK;xa*=V14_GK;
+ if(td!=null&&isFinite(td)){const T=xh+xa;let lo=0.05,hi=0.95;for(let it=0;it<22;it++){const sh=(lo+hi)/2;const m=v14Mat(T*sh,T*(1-sh));const d=v14Sum(m,(i,j)=>i>j)-v14Sum(m,(i,j)=>i<j);if(d<td)lo=sh;else hi=sh;}const sh=(lo+hi)/2;xh=T*sh;xa=T*(1-sh);}const M=v14Mat(xh,xa),H=v14Mat(xh*0.47,xa*0.47,1.05);const o={};const od=(p,mg)=>roundOdd(1/(Math.max(0.005,p)*mg));
  const p1=v14Sum(M,(i,j)=>i>j),pX=v14Sum(M,(i,j)=>i===j),p2=1-p1-pX;o['1X']=od(p1+pX,1.05);o['12']=od(p1+p2,1.05);o['X2']=od(pX+p2,1.05);
  [[1,'15'],[2,'25'],[3,'35']].forEach(([n,s])=>{const pu=v14Sum(M,(i,j)=>i+j<=n);o['o'+s]=od(1-pu,1.06);o['u'+s]=od(pu,1.06);});
  const hm=v14Sum(M,(i,j)=>i-j>=2),am=v14Sum(M,(i,j)=>j-i>=2);o.hm15=od(hm,1.06);{const gg=v14Sum(M,(i,j)=>i>0&&j>0);o.gg=od(gg,1.06);o.ng=od(1-gg,1.06);}o.ap15=od(1-hm,1.06);o.am15=od(am,1.06);o.hp15=od(1-am,1.06);
@@ -4367,7 +4368,7 @@ function v14Ext(h,a,mid){const key=S.season+'|'+(S.round||0);const C=V14_MC[mid]
  const cm=9.8,km=3.9;o.co95=od(v14PoisGt(cm,9),1.06);o.cu95=od(1-v14PoisGt(cm,9),1.06);o.ko35=od(v14PoisGt(km,3),1.06);o.ku35=od(1-v14PoisGt(km,3),1.06);
  if(/^L\|/.test(mid)){[[h,xh],[a,xa]].forEach(([c,x])=>{v14Shooters(c).slice(0,3).forEach(({p,s})=>{const k='sc_'+p.id;o[k]=od(1-Math.exp(-x*s*0.93),1.22);MK_LBL[k]='gól dá: '+p.n;MK_SHORT[k]=String(p.n).split(' ').slice(-1)[0];});});}
  V14_CS.forEach(()=>{});V14_MC[mid]={k:key,o};return o;}
-(function(){const _mo=matchOdds;matchOdds=function(h,a,seed){const o=_mo.apply(this,arguments);try{if(seed&&/^[LW]\|/.test(seed)&&S&&S.clubs){const e=v14Ext(h,a,seed);const r=Object.assign({},e,o);['o25','u25','gg','ng'].forEach(k=>{if(e[k])r[k]=e[k];});return r;}}catch(e){}return o;};})();
+(function(){const _mo=matchOdds;matchOdds=function(h,a,seed){const o=_mo.apply(this,arguments);try{if(seed&&/^[LW]\|/.test(seed)&&S&&S.clubs){let td=null;try{const i1=1/o['1'],i2=1/o['2'],ix=1/o['X'];const sm=i1+i2+ix;if(isFinite(sm)&&sm>0)td=(i1-i2)/sm;}catch(x){}const e=v14Ext(h,a,seed,td);const r=Object.assign({},e,o);['o25','u25','gg','ng'].forEach(k=>{if(e[k])r[k]=e[k];});return r;}}catch(e){}return o;};})();
 /* vyhodnocení */
 function v14Rnd(s){return typeof mulberry==='function'?mulberry(hashStr(s)):Math.random;}
 function v14Pois(r,mu){const L=Math.exp(-mu);let k=0,p=1;do{k++;p*=r();}while(p>L&&k<40);return k-1;}
@@ -4416,7 +4417,8 @@ function v14LvRem(M){if(M.ended)return 0;const ad=M.added||[];if(M.half===1)retu
  if(M.half===3)return (M.min<105?105-M.min+1:Math.max(0.5,105+(ad[2]||1)-M.min))+16;return M.min<120?120-M.min+2:Math.max(0.5,120+(ad[3]||2)-M.min);}
 function v14LvWin(M){if(M.ended||M.et||M.half>2)return null;const c=M.half===1?[15,30,45]:[60,75,90];for(const w of c){if(w-M.min>=8||(w%45===0&&w-M.min>=3))return w;}return null;}
 function v14LvLines(M){const rf=v14LvRem(M)/V14L_FM;const c=M.stats[0].cor+M.stats[1].cor,k=M.stats[0].yc+M.stats[1].yc+M.stats[0].rc+M.stats[1].rc;
- return {c:Math.floor(c+V14L_COR*rf)+0.5,k:Math.floor(k+V14L_CRD*rf)+0.5,w:v14LvWin(M)};}
+ const best=(cur,mu)=>{let b=null,bd=9;for(let d=-1;d<=1;d++){const L=Math.max(cur,Math.floor(cur+mu)+d)+0.5;const po=v14Pc(mu,Math.floor(L)+1-cur);const dd=Math.abs(po-0.5);if(dd<bd){bd=dd;b=L;}}return b;};
+ return {c:best(c,V14L_COR*rf),k:best(k,V14L_CRD*rf),w:v14LvWin(M)};}
 function v14Pc(l,n){let s=0,t=Math.exp(-l);for(let i=0;i<n;i++){s+=t;t*=l/(i+1);}return 1-s;} // P(X>=n)
 function v14HtSc(M){const i=M.ev.findIndex(e=>e.t==='ht');if(i<0)return null;let a=0,b=0;for(let j=0;j<i;j++){const e=M.ev[j];if(e.t==='goal'){if(e.s===0)a++;else b++;}}return [a,b];}
 function v14LvShooters(M,i){const sd=M.sides[i];return onPitch(sd).map(id=>{const p=P(id);if(!p)return null;return {p,w:(V14L_PW[sd.slots[sd.xi.indexOf(id)]]!=null?V14L_PW[sd.slots[sd.xi.indexOf(id)]]:(V14L_PW[p.pos]!=null?V14L_PW[p.pos]:0.2))*Math.pow(1.06,(p.ovr||70)-70)};}).filter(x=>x&&x.w>0);}
@@ -4462,7 +4464,7 @@ function v14LvLbl(mk,ln){const f=x=>String(x).replace('.',',');if(mk==='lco'||mk
 function v14LvGroups(M,pr){const n=M.score[0]+M.score[1];const ln=v14LvLines(M);const G=[['res','Výsledek',['1','X','2']],['nx','Další gól',['nx_h','nx_0','nx_a']]];
  const ou=[];for(let q=n;q<=Math.min(8,n+2);q++)ou.push('o'+q+'5','u'+q+'5');G.push(['ou','Góly',ou,'Celkový počet gólů v zápase, i těch, co už padly.']);
  G.push(['bt','Oba dají',['gg','ng']],['dc','Dvojitá',['1X','12','X2']],['hc','Handicap',['hm15','hp15','am15','ap15'],'Handicap platí na konečný výsledek.']);
- const cs=Object.keys(pr).filter(k=>/^cs_/.test(k)&&pr[k]>0.004).sort((a,b)=>pr[b]-pr[a]).slice(0,6);G.push(['cs','Výsledek',cs,'Šest nejpravděpodobnějších konečných výsledků.']);
+ const cs=Object.keys(pr).filter(k=>/^cs_/.test(k)&&pr[k]>0.004).sort((a,b)=>pr[b]-pr[a]).slice(0,6);G.push(['cs','Skóre',cs,'Šest nejpravděpodobnějších konečných výsledků.']);
  const ns=[0,1].map(i=>v14LvShooters(M,i).sort((a,b)=>b.w-a.w).slice(0,3).map(x=>'ns_'+x.p.id));G.push(['ns','Střelec',ns[0].concat(ns[1]),'Horní řada domácí, dolní hosté. Vlastní góly se nepočítají.']);
  G.push(['rk','Rohy, karty',['lco','lcu','lko','lku'],`Teď rohy ${M.stats[0].cor+M.stats[1].cor}, karty ${M.stats[0].yc+M.stats[1].yc+M.stats[0].rc+M.stats[1].rc}. Linie ${String(ln.c).replace('.',',')} rohu a ${String(ln.k).replace('.',',')} karty.`]);
  if(M.half===1&&M.min<43)G.push(['ht','Poločas',['lht1','lhtX','lht2'],`Výsledek 1. poločasu, teď ${M.score[0]}:${M.score[1]}.`]);
