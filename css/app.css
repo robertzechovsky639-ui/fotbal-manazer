@@ -242,3 +242,4 @@ table{width:100%;border-collapse:collapse}
 @keyframes wxchg{0%{color:#ffd54a;transform:scale(1.15)}100%{transform:none}}
 .ev.arg{background:rgba(255,140,0,.08);border-radius:10px}
 .seg.talk button{white-space:normal;line-height:1.15;padding:4px 6px;min-width:0}
+.grid1{display:grid;grid-template-columns:1fr;gap:6px}.odd{min-width:0}.odd small{max-width:100%;overflow:hidden;text-overflow:ellipsis}
