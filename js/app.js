@@ -374,7 +374,7 @@ const T_FILL=['Hra se přelévá ve středu pole.','{T} drží míč a trpěliv�
 function fillT(t,o){return t.replace('{S}',o.S||'').replace('{K}',o.K||'').replace('{A}',o.A||'').replace('{T}',o.T||'');}
 function sideName(i){return i===0?'Domácí':'Hosté';}
 function gkOf(sd){const i=sd.slots.indexOf('GK');return i>=0?sd.xi[i]:null;}
-function stepMinute(M){if(M.ended)return [];const out=[];M.min++;const m=M.min;
+function stepMinute(M){if(M.ended)return [];const out=[];M.min++;const m=M.min;if(typeof v16Tick==='function'){try{v16Tick(M,out,m);}catch(e){}}
  const half=M.half;const limit=half===1?45+M.added[0]:half===2?90+M.added[1]:half===3?105+(M.added[2]||1):120+(M.added[3]||2);
  if(m%5===0)recalc(M);
  // držení míče
@@ -408,6 +408,7 @@ function chance(M,i,kind){const sd=M.sides[i],op=M.sides[1-i];const m=M.min;cons
  if(pen){if(RNG()<0.1&&!(M.bribe&&M.bribe.side===i)&&M._fp!==i){M.stats[i].sh--;M.stats[i].xg-=q;out.push({m,t:'var',s:i,tx:`📺 Videorozhodčí! Sudí si zákrok přehrál u monitoru a nařízenou penaltu pro ${S.clubs[sd.cid].n} odvolal. Hraje se dál.`});return out;}out.push({m,t:'pen',s:i,p:sh.id,tx:`Penalta! ${sideName(i)} kopou pokutový kop, k míči se staví ${S1}.`});}
  const r=RNG();
  if(r<pg&&!pen&&typeof varGoalP==='function'&&RNG()<varGoalP(M,i)){M.stats[i].sot++;out.push({m,t:'var',vg:1,s:i,p:sh.id,tx:varGoalTx(M,i)});}
+ else if(r<pg&&!pen&&typeof v16VarHold==='function'&&v16VarHold(M,i,sh,kind,out)){}
  else if(r<pg){M.stats[i].sot++;M.score[i]++;const as=pen?null:(RNG()<0.74?pickAssistM(sd,sh.id,kind):null);
   M.rt[sh.id]=(M.rt[sh.id]||6)+1.05;if(as)M.rt[as.id]=(M.rt[as.id]||6)+0.6;onPitch(op).forEach(id=>{const g=GRP(P(id).pos);if(g==='D'||g==='G')M.rt[id]=(M.rt[id]||6)-0.22;});
   const t=pen?`${S1} poslal brankáře na opačnou stranu.`:fillT(pick(kind==='head'?T_GOAL_HEAD:T_GOAL),{S:S1});
@@ -580,7 +581,7 @@ function grpSorted(g){return g.cl.slice().sort((a,b)=>{const x=g.t[a],y=g.t[b];r
 // kontext zápasu pro uživatele / AI
 function tieOf(e,h,a){const cup=cupById(e.c);if(e.k!=='ko')return null;return cup.rounds[e.i].ties.find(t=>(t.a===h&&t.b===a)||(t.a===a&&t.b===h));}
 function koInfo(e,h,a){const t=tieOf(e,h,a);if(!t)return null;const last=e.l===t.legs-1;let agg=[0,0];if(e.l===1&&t.res[0]){agg=[t.res[0][1],t.res[0][0]];}return {decide:last,agg,legs:t.legs,leg:e.l};}
-function quickCup(h,a,ko){let [xh,xa]=xgPair(synth(h),synth(a));try{const fx=wxFx(matchWeather(h,{h,a,type:'cup'}));if(fx&&isFinite(fx.rate*fx.acc)){xh*=fx.rate*fx.acc;xa*=fx.rate*fx.acc;}}catch(e){}let [gh,ga]=segGoals(xh,xa);const g90=[gh,ga];let pen=null,et=false;if(ko&&ko.decide&&gh+ko.agg[0]===ga+ko.agg[1]){et=true;gh+=poisson(xh/3.2);ga+=poisson(xa/3.2);if(gh+ko.agg[0]===ga+ko.agg[1])pen=wPens(clubStr(h),clubStr(a));}return {gh,ga,pen,et,g90};}
+function quickCup(h,a,ko){let [xh,xa]=typeof v16Pair==='function'?v16Pair(h,a):xgPair(synth(h),synth(a));try{const fx=wxFx(matchWeather(h,{h,a,type:'cup'}));if(fx&&isFinite(fx.rate*fx.acc)){xh*=fx.rate*fx.acc;xa*=fx.rate*fx.acc;}}catch(e){}let [gh,ga]=segGoals(xh,xa);const g90=[gh,ga];let pen=null,et=false;if(ko&&ko.decide&&gh+ko.agg[0]===ga+ko.agg[1]){et=true;gh+=poisson(xh/3.2);ga+=poisson(xa/3.2);if(gh+ko.agg[0]===ga+ko.agg[1])pen=wPens(clubStr(h),clubStr(a));}return {gh,ga,pen,et,g90};}
 function evTitle(e){const cup=cupById(e.c);if(!cup)return '';if(e.k==='md'){const gi=cup.groups.findIndex(g=>g.cl.includes(S.clubId));return `${cup.n} · ${e.i+1}. zápas ve skupině${gi>=0?' '+GL(gi):''}`;}
  ensureDraw(cup,e.i);const R=cup.rounds[e.i];const t=R.ties.find(x=>x.a===S.clubId||x.b===S.clubId);return `${cup.n} · ${R.nm}${t&&t.legs===2?(e.l?' – odveta':' – 1. zápas'):''}`;}
 function cupPrize(cup,kind,i){const me=myClub();if(cup.id==='dom'){const b=Math.max(20000,me.tv*0.5);return Math.round(b*(1+i*0.5)/1e4)*1e4;}if(cup.id==='po')return 0;
@@ -1725,7 +1726,7 @@ function forumHtml(M){const ui=userSide(M);const my=M.score[ui],th=M.score[1-ui]
  add(res,3);if(res==='win'&&my-th>=3)add('bigwin',2);if(M.derby)add(res==='win'?'derby_win':res==='loss'?'derby_loss':'draw',2);if(M.wx&&FORUM[M.wx.k])add(M.wx.k);if(myClub().ticketBase&&myClub().ticket>myClub().ticketBase*1.2)add('ticket');if(S.scandal&&S.scandal.s===S.season)add('scandal');if(G&&res!=='loss')add('scorer');
  const used=new Set();const nk=shuffle(FN.slice());const posts=[];for(let k=0;k<3&&pool.length;k++){let t,g=0;do{t=pick(pick(pool));}while(used.has(t)&&g++<20);used.add(t);t=t.replace(/\{(\w+)\}/g,(_,x)=>d[x]||'');posts.push(`<div class="chatl"><b class="cp-fanH">${nk[k]}</b><div>${esc(t)}</div></div>`);}
  return `<div class="card" style="padding:8px 12px"><h3>💬 Fórum fanoušků</h3>${posts.join('')}</div>`;}
-function keyMoments(M){const K=M.ev.filter(e=>['goal','red','var','pen','post','inj','pso'].includes(e.t)||(e.t==='save'&&/penalt/i.test(e.tx||'')));if(!K.length)return '';
+function keyMoments(M){const K=M.ev.filter(e=>['goal','red','var','pen','post','inj','pso','nog'].includes(e.t)||e.rm||(e.t==='save'&&/penalt/i.test(e.tx||'')));if(!K.length)return '';
  return `<div class="card" style="padding:8px 12px"><h3>🎬 Klíčové momenty</h3>${K.slice(0,14).map(e=>`<div class="row small" style="padding:3px 0;align-items:flex-start"><b class="mut" style="min-width:34px">${e.m}'</b><span style="flex:1">${esc(String(e.tx||'').replace(/^⚽ /,'⚽ '))}</span></div>`).join('')}</div>`;}
 function v4PreHtml(F){const opp=F.h===S.clubId?F.a:F.h;const oc=CL(opp);if(!oc)return '';const der=isDerby(F.h,F.a);const sm=clubStr(S.clubId),so=clubStr(opp);
  const kind=der?'pre_derby':(S.riv&&S.riv[opp]>=3)?'pre_riv':so>=sm?'pre_fav':'pre_dog';
@@ -3008,11 +3009,11 @@ const V11_PITCH=['🌱 Trávník je rozbitý, míč nepříjemně poskakuje.','�
 function v11Flash(e,M){const w=document.querySelector('.mv-wrap')||document.body;const old=document.getElementById('evfx');if(old)old.remove();
  let cls='g',big='⚽ GÓL!',sm='';const nmP=id=>{const p=P(id);return p?p.n:'';};const tm=i=>S.clubs[M.sides[i].cid]?S.clubs[M.sides[i].cid].n:'';
  if(e.t==='goal'){sm=(e.og?'vlastní gól · ':'')+nmP(e.p)+' · '+tm(e.s);big=M.score[0]+':'+M.score[1]+' ⚽ GÓL!';}
- else if(e.t==='red'){cls='r';big='🟥 ČERVENÁ';sm=nmP(e.p);}else if(e.t==='var'){cls='v';big='📺 VAR';sm=e.vg?'Gól se přezkoumává…':'Rozhodčí jde k monitoru';}
- else if(e.t==='pen'){cls='p';big='🎯 PENALTA';sm=tm(e.s);}else return;
+ else if(e.t==='red'){cls='r';big='🟥 ČERVENÁ';sm=nmP(e.p);}else if(e.t==='var'){cls='v';big='📺 VAR';sm=e.vchk?'Gól se přezkoumává…':e.vg?'Gól neplatí':'Rozhodčí jde k monitoru';}
+ else if(e.t==='pen'){cls='p';big='🎯 PENALTA';sm=tm(e.s);}else if(e.t==='nog'){cls='v';big='🚩 OFSAJD';sm='Gól neplatí · '+tm(e.s);}else return;
  const d=document.createElement('div');d.id='evfx';d.className='evfx '+cls;d.innerHTML=`<b>${esc(big)}</b>${sm?`<small>${esc(sm)}</small>`:''}`;w.appendChild(d);setTimeout(()=>{if(d.parentNode)d.remove();},1800);}
 (function(){const _ul=updLive;updLive=function(full){const r=_ul.apply(this,arguments);try{if(MS&&MS.M){const M=MS.M;const n=M.ev.length;if(MS._fxN==null||MS.ff){MS._fxN=n;return r;}
-  if(n>MS._fxN){const ne=M.ev.slice(MS._fxN).filter(e=>['goal','red','var','pen'].includes(e.t));MS._fxN=n;if(ne.length&&!M.ended)v11Flash(ne[ne.length-1],M);}}}catch(e){}return r;};
+  if(n>MS._fxN){const ne=M.ev.slice(MS._fxN).filter(e=>['goal','red','var','pen','nog'].includes(e.t));MS._fxN=n;if(ne.length&&!M.ended)v11Flash(ne[ne.length-1],M);}}}catch(e){}return r;};
  const _el=endLive;endLive=function(){if(MS)MS.ff=1;return _el.apply(this,arguments);};})();
 
 // ---------- 3) média: noviny a sociální sítě ----------
@@ -4050,7 +4051,7 @@ function m2Script(M,st,e){const s=e.s==null?st.poss:e.s,o=1-s,dir=s===0?1:-1,sc=
   if(!st.pen){steps.push({d:650,f:()=>{st.mode='';st.poss=s;st.force[s][k]=spot;const p=m2PlayerXY(st,s,k);st.pend={s,k};m2Kick(st,spot.x-dir*0.02,spot.y,420*sc,1);}});}
   else steps.push({d:420,f:()=>{st.force[s][k]={x:att(0.865),y:0.5};st.car={s,k};st.ball={x:att(0.895),y:0.5};}});
   steps.push({d:330,f:()=>{st.force[s]={};st.car=null;st.trail={x:st.ball.x,y:st.ball.y,t0:st.t};const gk=m2Gk(M,o);const g=m2PlayerXY(st,o,gk);
-   if(kind==='goal'){m2Kick(st,gx+(s===0?0.012:-0.012),m2Rand(0.465,0.535),300*sc);}
+   if(kind==='goal'||kind==='nog'){m2Kick(st,gx+(s===0?0.012:-0.012),m2Rand(0.465,0.535),300*sc);}
    else if(kind==='save'){m2Kick(st,g.x,g.y,300*sc);}
    else if(kind==='miss'){m2Kick(st,gx+(s===0?0.02:-0.02),Math.random()<.5?m2Rand(0.3,0.42):m2Rand(0.58,0.7),320*sc);}
    else if(kind==='post'){m2Kick(st,gx,Math.random()<.5?0.447:0.553,280*sc);}
@@ -4058,15 +4059,17 @@ function m2Script(M,st,e){const s=e.s==null?st.poss:e.s,o=1-s,dir=s===0?1:-1,sc=
   const gk=m2Gk(M,o);
   if(kind==='goal'){steps.push({d:1500,f:()=>{const sx=att(0.9),sy=st.ball.y<0.5?0.12:0.88;st.mode='cele';st.cele={s,x:s===0?0.9:0.1,y:sy};m2Ov(st,{tp:'big',tx:'GÓL!',c:st.cols[s],dur:1400});}});
    steps.push({d:500,f:()=>{st.mode='ko';st.cele=null;st.ball={x:.5,y:.5};st.poss=o;st.car={s:o,k:m2Fwd(M,o)};st.next=st.t+500*sc;}});}
+  else if(kind==='nog')steps.push({d:1300,f:()=>{m2Ov(st,{tp:'flag',x:att(0.8),y:s===0?0.985:0.015,dur:1200});m2Ov(st,{tp:'big',tx:e.vchk?'📺 VAR kontroluje gól…':'🚩 Ofsajd – gól neplatí',c:e.vchk?'#9be7ff':'#ffd54a',dur:1200});if(!e.vchk){st.poss=o;st.car={s:o,k:gk};}}});
   else if(kind==='save')steps.push({d:700,f:()=>{m2Ov(st,{tp:'lbl',tx:e.pen?'Chycená penalta!':'Zákrok!',x:st.ball.x,y:st.ball.y});st.poss=o;st.car={s:o,k:gk};}});
   else if(kind==='miss')steps.push({d:700,f:()=>{m2Ov(st,{tp:'lbl',tx:'Vedle!',x:att(0.9),y:st.ball.y});st.ball={x:s===0?0.95:0.05,y:0.5};st.poss=o;st.car={s:o,k:gk};}});
   else if(kind==='post')steps.push({d:650,f:()=>{m2Ov(st,{tp:'lbl',tx:'Tyč!',x:att(0.9),y:st.ball.y});const d=m2PlayerXY(st,o,2);st.pend={s:o,k:2};m2Kick(st,d.x,d.y,300*sc);}});
   else steps.push({d:600,f:()=>{m2Ov(st,{tp:'lbl',tx:'Zblokováno',x:st.ball.x,y:st.ball.y});st.poss=o;st.car={s:o,k:Math.min(3,M.sides[o].xi.length-1)};}});
   steps.push({d:1,f:()=>{st.pen=false;if(st.mode==='pen')st.mode='';}});};
  switch(e.t){
-  case 'goal':case 'save':case 'miss':case 'post':case 'block':shot(e.t);break;
+  case 'goal':if(e.varOk){steps.push({d:1500,f:()=>{st.mode='cele';st.cele={s,x:s===0?0.9:0.1,y:0.5};m2Ov(st,{tp:'big',tx:'✅ VAR: GÓL PLATÍ!',c:st.cols[s],dur:1400});}});steps.push({d:500,f:()=>{st.mode='ko';st.cele=null;st.ball={x:.5,y:.5};st.poss=o;st.car={s:o,k:m2Fwd(M,o)};st.next=st.t+500*sc;}});break;}shot(e.t);break;
+  case 'nog':shot('nog');break;
   case 'pen':steps.push({d:1100,f:()=>{st.pen=true;st.mode='pen';st.penS=s;st.poss=s;st.car=null;st.ball={x:att(0.895),y:0.5};m2Ov(st,{tp:'big',tx:'PENALTA',c:'#ffd54a',dur:1000});}});break;
-  case 'var':steps.push({d:1400,f:()=>{st.car=null;m2Ov(st,{tp:'big',tx:e.vg?'📺 VAR – gól neplatí':'📺 VAR',c:'#9be7ff',dur:1300});}});steps.push({d:1,f:()=>{st.pen=false;st.mode='';st.car={s:1-s,k:m2Gk(M,1-s)};st.poss=1-s;}});break;
+  case 'var':if(e.vchk){shot('nog');break;}steps.push({d:1400,f:()=>{st.car=null;m2Ov(st,{tp:'big',tx:e.vg?'📺 VAR – gól neplatí':'📺 VAR',c:'#9be7ff',dur:1300});}});steps.push({d:1,f:()=>{st.pen=false;st.mode='';st.car={s:1-s,k:m2Gk(M,1-s)};st.poss=1-s;}});break;
   case 'cor':{const cy=Math.random()<.5?0.015:0.985;steps.push({d:500,f:()=>{st.poss=s;st.car=null;st.mode='cor';m2Kick(st,att(0.995),cy,300*sc);m2Ov(st,{tp:'flag',x:att(0.995),y:cy,dur:900});}});
    steps.push({d:700,f:()=>{m2Kick(st,att(m2Rand(0.86,0.92)),m2Rand(0.4,0.6),450*sc,1);m2Ov(st,{tp:'lbl',tx:'Roh',x:att(0.96),y:cy<.5?0.1:0.9});}});
    steps.push({d:300,f:()=>{st.mode='';const k=m2Fwd(M,s);st.car={s,k};}});break;}
@@ -4629,6 +4632,127 @@ Object.assign(MK_GRP,{adv1:'postup',adv2:'postup'});MK_LBL.adv1='domácí postou
  const _lo=lvOpen;lvOpen=function(M,mk){if(M&&(M.half>2||M.et)&&mk!=='adv1'&&mk!=='adv2')return false;return _lo.apply(this,arguments);};
  const _g=v14LvGroups;v14LvGroups=function(M,pr){const G=_g.apply(this,arguments);try{if(dec(M)){const g=['adv','Postup',['adv1','adv2']];g[4]='grid2';g[5]='Kdo postoupí (počítá se i prodloužení a penalty)';G.unshift(g);}}catch(x){}return G;};})();
 (function(){const _et=evTitle;evTitle=function(e){const s=_et.apply(this,arguments);try{if(e&&e.c==='dom'&&V15_DOM[S.cc])return s.replace(/^Pohár/,V15_DOM[S.cc]);}catch(x){}return s;};})();
+
+/* v14.6: realističtější poháry – víc překvapení (motivace outsidera, rotace favorita, menší rozdíl), neutrální finále, pohárové senzace */
+let V16_E=null,V16_CTX=null;
+function v16Neu(cup,i){try{const R=cup&&cup.rounds&&cup.rounds[i];return !!(R&&R.ties.length===1&&R.ties[0].legs===1&&!(R.byes||[]).length);}catch(x){return false;}}
+// úprava síly v pohárovém zápase: [delta domácí, delta hosté, neutrální]
+function v16Adj(h,a,cid,k,i){const cup=cupById(cid);if(!cup||cid==='po'||(typeof window!=='undefined'&&window.__v16off))return [0,0,false];const dom=cid==='dom';const ko=k==='ko';
+ const neu=ko&&v16Neu(cup,i);const late=ko&&cup.rounds&&cup.rounds[i]&&cup.rounds[i].ties.length<=2&&!(cup.rounds[i].byes||[]).length;
+ const sh=clubStr(h),sa=clubStr(a);const d=Math.abs(sh-sa);if(d<0.5)return [0,0,neu];const favH=sh>sa;const fav=favH?h:a;
+ const shr=dom?(d>10?(d-10)*0.75:0):(d>10?(d-10)*0.4:0);
+ const rot=dom&&!late&&fav!==S.clubId?clamp((d-10)*0.25,0,1.5):0;
+ const dogH=!favH&&!neu;const mot=dom?clamp((d-8)*0.15,0,0.8)*(dogH?1:0.5):(dogH&&d>=8?0.5:0);
+ const df=-(shr/2+rot),dd=shr/2+mot;return favH?[df,dd,neu]:[dd,df,neu];}
+function v16Neutral(xh,xa){return [xh/1.12*1.004,xa/0.9*1.004];}
+function v16Pair(h,a){const sy=(r,b)=>{const s=synth(r);if(b){s.att+=b;s.def+=b;s.mid+=b;s.ovr+=b;}return s;};let A=[0,0,false];try{if(V16_E)A=v16Adj(h,a,V16_E.c,V16_E.k,V16_E.i);}catch(x){}
+ let p=xgPair(sy(h,A[0]),sy(a,A[1]));if(A[2])p=v16Neutral(p[0],p[1]);return p;}
+(function(){const _re=resolveEvent;resolveEvent=function(e){const pv=V16_E;V16_E=e;try{return _re.apply(this,arguments);}finally{V16_E=pv;}};
+ // kurzy: stejný model jako výsledky
+ const _so=strOf;strOf=function(ref){const s=_so.apply(this,arguments);const C=V16_CTX;if(C){const b=ref===C.h?C.d[0]:ref===C.a?C.d[1]:0;if(b){const r=Object.assign({},s);r.att+=b;r.def+=b;r.mid+=b;r.ovr=(r.ovr||0)+b;return r;}}return s;};
+ const _xp=xgPair;xgPair=function(sh,sa){const p=_xp.apply(this,arguments);if(V16_CTX&&V16_CTX.neu)return v16Neutral(p[0],p[1]);return p;};
+ const _mo=matchOdds;matchOdds=function(h,a,seed){if(seed&&/^C\|/.test(seed)&&!V16_CTX){let C=null;try{const p=v15Parse(seed);if(p&&p.se===S.season){const A=v16Adj(h,a,p.c,p.k,p.i);C={h,a,d:[A[0],A[1]],neu:A[2]};}}catch(x){}
+   if(C){V16_CTX=C;try{return _mo.apply(this,arguments);}finally{V16_CTX=null;}}}return _mo.apply(this,arguments);};
+ // vlastní zápas v enginu
+ const _cm=createMatch;createMatch=function(h,a,F){const M=_cm.apply(this,arguments);try{if(F&&F.type==='cup'&&F.e){const A=v16Adj(h,a,F.e.c,F.e.k,F.e.i);M.v16neu=A[2];if(A[0]||A[1]){M.tb=M.tb||[0,0];M.tb[0]+=A[0];M.tb[1]+=A[1];}recalc(M);}}catch(x){}return M;};
+ const _rc=recalc;recalc=function(M){_rc.apply(this,arguments);try{if(M&&M.v16neu&&M.xg)M.xg=v16Neutral(M.xg[0],M.xg[1]);}catch(x){}};})();
+// UI: neutrální hřiště
+(function(){const _bg=betGroups;betGroups=function(){const out=_bg.apply(this,arguments);try{out.forEach(g=>{if(!g.cup||!g.ms.length)return;const p=v15Parse(g.ms[0].mid);if(p&&p.k==='ko'&&v16Neu(cupById(p.c),p.i)&&!/neutrální/.test(g.name))g.name+=' · neutrální hřiště';});}catch(x){}return out;};
+ const _og=v14OwnGroup;v14OwnGroup=function(){const G=_og.apply(this,arguments);try{G.forEach(g=>{const p=v15Parse(g.ms[0].mid);if(p&&p.k==='ko'&&v16Neu(cupById(p.c),p.i)&&!/neutrální/.test(g.name))g.name+=' · neutrální hřiště';});}catch(x){}return G;};
+ const _et=evTitle;evTitle=function(e){const s=_et.apply(this,arguments);try{if(e&&e.k==='ko'&&v16Neu(cupById(e.c),e.i)&&!/neutrální/.test(s))return s+' · neutrální hřiště';}catch(x){}return s;};})();
+// pohárové senzace
+function v16Sens(e){try{const cup=cupById(e.c);if(!cup||e.c==='po'||e.k!=='ko')return;const R=cup.rounds[e.i];if(!R)return;const dom=e.c==='dom';const nm=dom?v15CupName(cup):cup.n;const L=[];
+  for(const t of R.ties){if(!t.w||t.v16s)continue;if(t.legs===2&&e.l!==1)continue;const l=t.w===t.a?t.b:t.a;const gw=clubStr(t.w),gl=clubStr(l);const tw=dom?tierOf(t.w):1,tl=dom?tierOf(l):1;
+   const big=dom?(tw>tl&&gl-gw>=6):(gl-gw>=8);if(!big)continue;t.v16s=1;L.push({w:t.w,l,g:gl-gw+(tw-tl)*4,tw,tl,t});}
+  L.sort((x,y)=>y.g-x.g);L.slice(0,2).forEach(x=>{const W=CL(x.w).n,Lo=CL(x.l).n;const t=x.t;const wa=t.w===t.a;let sc='';
+   if(t.legs===1&&t.res[0])sc=wa?t.res[0][0]+':'+t.res[0][1]:t.res[0][1]+':'+t.res[0][0];else if(t.res.length===2){const ga=t.res[0][0]+t.res[1][1],gb=t.res[0][1]+t.res[1][0];sc=wa?ga+':'+gb:gb+':'+ga;}
+   const how=t.pen?(sc&&sc.split(':')[0]===sc.split(':')[1]?' a penaltách':' po penaltách'):t.et?' po prodloužení':'';
+   const tier=dom&&x.tw>x.tl?' ('+x.tw+'. liga)':'';const me=x.w===S.clubId?' Tvůj tým píše historii!':x.l===S.clubId?' Pro tvůj tým velká ostuda.':'';
+   const res=sc?(t.legs===2?' po celkovém skóre '+sc:t.pen&&sc.split(':')[0]===sc.split(':')[1]?' po remíze '+sc+how:' po výhře '+sc+how):how;
+   addNews('📰',`Pohárová senzace! Favorit ${Lo} v soutěži ${nm} končí (${String(R.nm).charAt(0).toLowerCase()+String(R.nm).slice(1)}), postupuje ${W}${tier}${res}.${me}`);});}catch(x){}}
+(function(){const _re=resolveEvent;resolveEvent=function(e){const r=_re.apply(this,arguments);v16Sens(e);return r;};})();
+
+/* v14.6: neuznané góly jako ve skutečnosti (praporek, VAR zruší, VAR potvrdí) a chyby rozhodčích */
+function v16HasVar(M){try{const F=M.F;if(F&&F.type==='cup'&&F.e){const c=F.e.c;if(c==='po')return true;if(c==='dom'){const cup=cupById('dom');const R=cup&&cup.rounds[F.e.i];return !!(R&&R.ties.length<=4);}return !/q$/.test(c);}
+ const t=Math.min(tierOf(M.h.cid),tierOf(M.a.cid));return t===1||(S.cc==='DE'&&t===2);}catch(e){return false;}}
+function v16Club(M,i){return S.clubs[M.sides[i].cid]?S.clubs[M.sides[i].cid].n:sideName(i);}
+function v16Limit(M){const h=M.half,a=M.added||[];return h===1?45+a[0]:h===2?90+a[1]:h===3?105+(a[2]||1):120+(a[3]||2);}
+const V16_WHY=['těsný ofsajd – útočník byl o kousek ramene před obráncem','faul v předchozí akci','ruka útočníka před střelou','ofsajd hráče, který bránil brankáři ve výhledu','míč před centrem opustil hřiště'];
+function v16Init(M){if(M.v16)return M.v16;const va=v16HasVar(M);const V={va,pend:null,pl:[],log:[]};M.v16=V;
+ // chyby rozhodčího: zhruba každý 3.–4. zápas nějaká výraznější
+ const br=!!(M.bribe||(M.rd&&M.rd.dl));let pm=(va?0.28:0.30)*(br?0.5:1);const n=RNG()<pm?(RNG()<0.12?2:1):0;
+ const T=[['penGiven',20],['penMissed',20],['redWrong',11],['redMissed',13],['goalOff',va?5:15],['goalFlag',va?6:10],['corner',12]];
+ for(let k=0;k<n;k++){const ty=wpick(T,x=>x[1])[0];let ben=RNG()<0.5?0:1;if(M.bribe)ben=M.bribe.side;else if(M.rd&&M.rd.dl&&M.rd.side!=null)ben=M.rd.side;if((M.bribe||(M.rd&&M.rd.dl))&&(ty==='penMissed'||ty==='goalFlag'))ben=1-ben;V.pl.push({ty,ben,m:rint(6,88),done:0});}
+ return V;}
+function v16Goal(M,i,pid,out,m,tx,x){const sd=M.sides[i],op=M.sides[1-i];M.score[i]++;M.stats[i].sot++;const as=x&&x.pen?null:(RNG()<0.74?pickAssistM(sd,pid,x&&x.kind):null);
+ M.rt[pid]=(M.rt[pid]||6)+1.05;if(as)M.rt[as.id]=(M.rt[as.id]||6)+0.6;onPitch(op).forEach(id=>{const g=GRP(P(id).pos);if(g==='D'||g==='G')M.rt[id]=(M.rt[id]||6)-0.22;});
+ const e=Object.assign({m,t:'goal',s:i,p:pid,as:as&&as.id,tx:tx+(as?' Asistence: '+pSurname(as)+'.':''),sc:M.score.slice()},x||{});delete e.kind;out.push(e);return e;}
+// (b)+(c): gól se kontroluje videem – skóre se změní až po rozhodnutí
+function v16VarHold(M,i,sh,kind,out){const V=v16Init(M);if(!V.va||V.pend||M.min>=v16Limit(M)-1)return false;const b=M.bribe;
+ const pB=0.04*(b?(b.side===i?0.3:1.8):1),pC=0.085;const r=RNG();if(r>=pB+pC)return false;const dec=r<pB?'no':'yes';
+ V.pend={s:i,p:sh.id,kind,dec,st:M.min,end:M.min+(dec==='no'?rint(2,3):rint(1,2)),why:pick(V16_WHY)};M.stats[i].sot++;
+ out.push({m:M.min,t:'var',vchk:1,s:i,p:sh.id,tx:`⚽ ${pSurname(sh)} posílá míč do sítě… ale 📺 videorozhodčí gól kontroluje. Hráči ${v16Club(M,i)} čekají, sázky jsou pozastavené.`});return true;}
+function v16VarDecide(M,out,m){const V=M.v16,d=V.pend;V.pend=null;const dur=Math.max(1,m-d.st);
+ if(d.dec==='yes'){const p=P(d.p);v16Goal(M,d.s,d.p,out,m,`✅ GÓL PLATÍ! Po ${dur} min. kontroly VAR ${p?pSurname(p):'střelec'} slaví – ofsajd ani faul nebyl.`,{varOk:1,kind:d.kind});V.log.push({k:'varOk',s:d.s,m});}
+ else{out.push({m,t:'var',vg:1,s:d.s,p:d.p,tx:`📺 Gól neplatí! Rozhodčí si situaci ${dur>=2?'dlouho ':''}přehrál u monitoru: ${d.why}. Skóre zůstává ${M.score[0]}:${M.score[1]}.`});V.log.push({k:'varNo',s:d.s,m});}}
+// chyba rozhodčího – provedení
+function v16Mist(M,x,out,m){const V=M.v16,i=x.ben,o=1-i,sd=M.sides[i],od=M.sides[o];const A=v16Club(M,i),B=v16Club(M,o);const rm=(tx,extra)=>out.push(Object.assign({m,t:'fill',rm:1,s:i,tx:'🔁 '+tx},extra||{}));
+ const shooter=()=>{const s=shooterOf(sd);return s?s.id:pick(onPitch(sd));};const victim=sideIdx=>{const ids=onPitch(M.sides[sideIdx]).filter(id=>P(id)&&P(id).pos!=='GK');return pick(ids);};
+ const corr=V.va&&RNG()<({penGiven:0.65,penMissed:0.55,redWrong:0.5,redMissed:0.45,goalOff:0.9,goalFlag:0.9,corner:0}[x.ty]||0);x.cor=corr;
+ const pk=()=>{const tk=sd.tac&&sd.tac.pk&&onPitch(sd).includes(sd.tac.pk)?sd.tac.pk:shooter();out.push({m,t:'pen',s:i,p:tk,tx:`Penalta! ${sideName(i)} kopou pokutový kop, k míči se staví ${nm(tk)}.`});
+  if(RNG()<0.76)v16Goal(M,i,tk,out,m,`⚽ GÓL! ${nm(tk)} penaltu proměnil.`,{pen:true});else{M.stats[i].sh++;out.push({m,t:'save',s:i,p:tk,pen:1,tx:`${nm(gkOf(od))} penaltu chytil! ${nm(tk)} neproměnil.`});}};
+ if(x.ty==='penGiven'){const p=shooter();if(corr){out.push({m,t:'var',s:i,tx:`📺 Rozhodčí ukázal na penaltu po pádu ${nm(p)}, ale videorozhodčí ho poslal k monitoru. Ke kontaktu nedošlo – penalta se ruší.`});V.log.push({k:'cor',ty:x.ty,s:i,m});return;}
+  pk();rm(`Opakovaný záznam ukazuje, že ${nm(p)} se skácel bez kontaktu – penalta pro ${A} neměla být.`,{rmk:'penGiven'});}
+ else if(x.ty==='penMissed'){const p=shooter();const hb=RNG()<0.45;if(corr){out.push({m,t:'var',s:i,tx:`📺 VAR zasahuje! ${hb?'Ruka obránce':'Faul na '+nm(p)} v pokutovém území – rozhodčí po přezkoumání nařizuje penaltu.`});pk();V.log.push({k:'cor',ty:x.ty,s:i,m});return;}
+  rm(`Opakovaný záznam ukazuje, že ${hb?'obránce '+B+' hrál v pokutovém území jasně rukou':'na '+nm(p)+' v pokutovém území byl faul'} – ${A} měli kopat penaltu, sudí nechal hrát.`,{rmk:'penMissed'});}
+ else if(x.ty==='redWrong'){const id=victim(o);if(!id)return;if(corr){M.yc=M.yc||{};M.yc[id]=1;M.stats[o].yc++;out.push({m,t:'var',s:i,tx:`📺 Sudí vytáhl na ${nm(id)} červenou, ale po kontrole u monitoru ji mění na žlutou. Zákrok nebyl surový.`});V.log.push({k:'cor',ty:x.ty,s:i,m});return;}
+  M.stats[o].rc++;M.rt[id]=(M.rt[id]||6)-1.5;out.push({m,t:'red',s:o,p:id,tx:`🟥 Červená karta! ${nm(id)} musí z hřiště po souboji ve středu pole.`});P(id)._mred=1;removeFromPitch(M,o,id);od.red++;
+  rm(`Opakovaný záznam ukazuje, že ${nm(id)} šel čistě do míče – červená karta byla velký omyl a ${B} hrají zbytečně v deseti.`,{rmk:'redWrong'});}
+ else if(x.ty==='redMissed'){const id=victim(o);if(!id)return;if(corr){M.stats[o].rc++;M.rt[id]=(M.rt[id]||6)-1.5;out.push({m,t:'red',s:o,p:id,tx:`🟥 Po kontrole VAR červená! ${nm(id)} původně viděl jen žlutou, ale jeho zákrok byl surový.`});P(id)._mred=rint(1,3);removeFromPitch(M,o,id);od.red++;V.log.push({k:'cor',ty:x.ty,s:i,m});return;}
+  M.yc=M.yc||{};if(!M.yc[id]){M.yc[id]=1;M.stats[o].yc++;}out.push({m,t:'yel',s:o,p:id,tx:`🟨 Žlutá karta: ${nm(id)} za tvrdý zákrok.`});
+  rm(`Opakovaný záznam ukazuje, že ${nm(id)} šel do soupeře podrážkou – měla to být červená, ${B} měli štěstí.`,{rmk:'redMissed'});}
+ else if(x.ty==='goalOff'){const p=shooter();if(corr){M.stats[i].sot++;out.push({m,t:'var',vg:1,s:i,p,tx:`⚽ ${nm(p)} skóruje, pomezní praporek nezvedl… 📺 VAR ale odhalil ofsajd. Gól neplatí.`});V.log.push({k:'cor',ty:x.ty,s:i,m});return;}
+  v16Goal(M,i,p,out,m,`⚽ GÓL! ${nm(p)} se dostal za obranu a zakončil.`);rm(`Opakovaný záznam ukazuje, že ${nm(p)} byl při přihrávce jasně v ofsajdu – gól neměl platit.${V.va?' VAR tentokrát nezasáhl.':''}`,{rmk:'goalOff'});}
+ else if(x.ty==='goalFlag'){const p=shooter();if(corr){out.push({m,t:'var',vchk:1,s:i,p,tx:`⚽ ${nm(p)} dává gól, pomezní ale zvedl praporek… 📺 VAR situaci kontroluje.`});V.pend={s:i,p,dec:'yes',st:m,end:m+rint(1,2),why:''};V.log.push({k:'cor',ty:x.ty,s:i,m});return;}
+  M.stats[i].sot++;M.stats[i].off++;out.push({m,t:'nog',s:i,p,tx:`⚽ ${nm(p)} posílá míč do sítě… ale 🚩 pomezní má praporek nahoře – ofsajd, gól neplatí.`});
+  rm(`Opakovaný záznam ukazuje, že ${nm(p)} ofsajd nebyl – ${A} přišli o regulérní gól.`,{rmk:'goalFlag'});}
+ else if(x.ty==='corner'){M.stats[i].cor++;out.push({m,t:'cor',s:i,tx:`${sideName(i)} mají rohový kop.`});rm(`Opakovaný záznam ukazuje, že míč naposledy tečoval útočník ${A} – roh neměl být.`,{rmk:'corner'});if(RNG()<0.35)out.push(...chance(M,i,'head'));}
+ const last=out[out.length-1];if(last&&last.rm&&RNG()<0.55)out.push({m,t:'fill',tx:`🗣️ Trenér ${B} zuří u lavičky a čtvrtému rozhodčímu ukazuje na tabuli. ${pick(['Tohle se nedá vysvětlit!','Hráči obklopili sudího.','Fanoušci pískají.'])}`});
+ V.log.push({k:'err',ty:x.ty,s:i,m});}
+function v16Tick(M,out,m){const V=v16Init(M);
+ if(V.pend&&(m>=V.pend.end||m>=v16Limit(M)))v16VarDecide(M,out,m);if(V.pend)return;
+ // (a) praporek pomezního: míč v síti, ale ofsajd
+ for(let i=0;i<2;i++){const xs=(M.xg[0]+M.xg[1])/2||1.3;if(RNG()<0.25/2/93*clamp(M.xg[i]/xs,0.4,1.8)){const s=shooterOf(M.sides[i]);if(!s)continue;M.stats[i].off++;out.push({m,t:'nog',s:i,p:s.id,tx:`⚽ ${pSurname(s)} posílá míč do sítě… ale 🚩 pomezní rozhodčí má praporek nahoře – ofsajd, gól neplatí.${V.va&&RNG()<0.5?' VAR rozhodnutí potvrdil.':''}`});V.log.push({k:'flag',s:i,m});return;}}
+ for(const x of V.pl){if(!x.done&&m>=x.m&&M.half<=2){x.done=1;v16Mist(M,x,out,m);break;}}}
+// penaltu z enginu už VAR-hold neřeší; staré varGoalP jen pro domluvené rozhodčí
+(function(){const _v=varGoalP;varGoalP=function(M,i){const p=_v.apply(this,arguments);return p>=1?1:0;};})();
+// live: pozastavení během kontroly
+(function(){const _s=v14LvSus;v14LvSus=function(M){if(M&&M.v16&&M.v16.pend&&!M.ended){M.v14sr='VAR kontroluje gól';return true;}return _s.apply(this,arguments);};})();
+// chat sázkařů
+Object.assign(CH,{varchk_good:['VAR to kontroluje… prosím, ať to neplatí!','Ofsajd! Musel to být ofsajd!','Ještě není nic ztraceno, video rozhodne.'],varchk_bad:['Neeee, co tam zase hledají? Ten gól je čistý!','Zase VAR… srdce mi buší jak o závod.','Jestli mi to zruší, vyhodím telefon z okna.'],
+ flag_good:['Praporek nahoře! Tiket žije!','Ofsajd, jasně, pomezní dobrý!','Uff, to bylo o fous.'],flag_bad:['Ofsajd? Vždyť tam nic nebylo!','Pomezní spí, tohle byl regulérní gól!','Už jsem slavil… a praporek.'],
+ rm_good:['Tak tohle nám sudí daroval, beru to 😅','Sorry jako, ale na tiketu se to počítá.','Rozhodčí dneska hraje za nás.'],rm_bad:['To snad není možný, opakovačka to jasně ukazuje!','Sudí mi právě zabil tiket. Kde je VAR?','Tohle by měla řešit komise. Skandál!'],
+ varok_good:['GÓL PLATÍ! Já to věděl!','Video potvrdilo, slavíme podruhé!'],varok_bad:['Proč to platí?! Tam byl ofsajd!','Čekal jsem zázrak u monitoru… nic.']});
+(function(){const _c=chOnEvent;chOnEvent=function(M,e){try{const C=MS.chat;const U=C.users.filter(u=>!u.co);const live=U.length?U:C.users;
+  const bs=s=>{const g=[],b=[];live.forEach(u=>{const v=chBen(M,u,s);if(v>0.03)g.push(u);else if(v<-0.03)b.push(u);});return [g,b];};
+  if(e.t==='var'&&e.vchk){const [g,b]=bs(e.s);if(b.length)chSay(M,pick(b),'varchk_good',{},true);if(g.length)chSay(M,pick(g),'varchk_bad',{},true);return;}
+  if(e.t==='nog'){const [g,b]=bs(e.s);if(b.length)chSay(M,pick(b),'flag_good',{},true);if(g.length&&RNG()<0.8)chSay(M,pick(g),'flag_bad',{},true);return;}
+  if(e.rm){const [g,b]=bs(e.s);const ben=e.rmk==='goalFlag'||e.rmk==='penMissed'?b:g,vic=e.rmk==='goalFlag'||e.rmk==='penMissed'?g:b;if(vic.length)chSay(M,pick(vic),'rm_bad',{},true);if(ben.length&&RNG()<0.6)chSay(M,pick(ben),'rm_good',{},true);return;}
+  if(e.t==='goal'&&e.varOk){const [g,b]=bs(e.s);if(g.length)chSay(M,pick(g),'varok_good',{},true);if(b.length)chSay(M,pick(b),'varok_bad',{},true);}}catch(x){}return _c.apply(this,arguments);};})();
+// po zápase: zpráva, fanoušci, tisková konference
+function v16Errs(M){return ((M.v16&&M.v16.log)||[]).filter(x=>x.k==='err');}
+// kdo na chybě vydělal: u goalFlag/penMissed je postižený ten, komu chyba měla pomoct opačně – ben je strana, které rozhodnutí uškodilo
+function v16Hurt(x){return x.ty==='goalFlag'||x.ty==='penMissed'?x.s:1-x.s;}
+const V16_TY={penGiven:'neoprávněná penalta',penMissed:'nepískaná penalta',redWrong:'nesprávná červená karta',redMissed:'přehlédnutá červená karta',goalOff:'uznaný gól z ofsajdu',goalFlag:'neuznaný regulérní gól',corner:'chybně nařízený roh'};
+(function(){const _a=v4AfterMatch;v4AfterMatch=function(M){const r=_a.apply(this,arguments);try{const E=v16Errs(M);if(E.length&&M.sides){const u=M.h.user?0:M.a.user?1:-1;
+   E.forEach(x=>{const hurt=v16Hurt(x);const tm=v16Club(M,hurt);const tx=`Chyba rozhodčího v zápase ${v16Club(M,0)} – ${v16Club(M,1)} (${x.m}. min.): ${V16_TY[x.ty]}, doplatili na ni ${tm}.`;
+    if(u>=0&&hurt===u){fansAdd(-2);addNews('🧑‍⚖️',tx+' Fanoušci zuří a klub zvažuje stížnost.');}else if(u>=0){addNews('🧑‍⚖️',tx+' Tvůj tým měl štěstí.',1);}});
+   M.v16pq=u>=0?(E.some(x=>v16Hurt(x)===u)?'refErrAg':'refErrFor'):null;}}catch(x){}return r;};})();
+Object.assign(PRESS_Q,{refErrAg:['Rozhodčí dnes udělal chybu, která vás poškodila. Jak to vidíte?',[['Chyby se stávají, musíme být lepší my.',{mor:1,fans:-1,board:2}],['Tohle byl skandál, podáme stížnost na komisi.',{mor:2,fans:4,board:-2}],['K rozhodčím se nevyjadřuji.',{mor:0,fans:0,board:1}]]],
+ refErrFor:['Opakované záznamy ukazují, že vám rozhodčí dnes pomohl. Co na to?',[['Přiznávám, měli jsme štěstí.',{mor:0,fans:1,board:1}],['Rozhoduje se na hřišti, ne v televizi.',{mor:1,fans:1,board:-1}],['Za celou sezónu se to vyrovná.',{mor:0,fans:0,board:0}]]]});
+(function(){const _p=pressPick;pressPick=function(kind,F,M){if(kind!=='pre'&&M&&M.v16pq&&!M.v16pqd&&!(S.scandal&&S.scandal.s===S.season&&!S.scandal.asked)){M.v16pqd=1;return M.v16pq;}return _p.apply(this,arguments);};})();
+// celkový počet gólů zůstává stejný: neuznané góly a chyby rozhodčích se vyrovnají mírně nižší produktivitou
+(function(){const _rc=recalc;recalc=function(M){_rc.apply(this,arguments);try{if(M&&M.xg&&M.sides){if(M._v16va==null)M._v16va=v16HasVar(M)?1:0;const f=M._v16va?0.978:0.96;M.xg=[M.xg[0]*f,M.xg[1]*f];}}catch(x){}};})();
 
 
 // ---------- boot ----------
