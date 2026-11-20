@@ -190,7 +190,7 @@ function applyResult(code,h,a,gh,ga){const T=S.leagues[code].table;const x=T[h],
  if(gh>ga){x.w++;y.l++;x.pts+=3;x.form.push('V');y.form.push('P');}else if(gh<ga){y.w++;x.l++;y.pts+=3;x.form.push('P');y.form.push('V');}else{x.d++;y.d++;x.pts++;y.pts++;x.form.push('R');y.form.push('R');}
  if(x.form.length>5)x.form.shift();if(y.form.length>5)y.form.shift();}
 // ----- rychlá simulace zápasu (AI) -----
-function xgPair(sh,sa){const k=20.5;let xh=1.44*Math.exp((sh.att-sa.def)/k+(sh.mid-sa.mid)/80)*1.12;let xa=1.44*Math.exp((sa.att-sh.def)/k+(sa.mid-sh.mid)/80)*0.9;return [clamp(xh,0.15,4.2),clamp(xa,0.12,3.8)];}
+function xgPair(sh,sa){const k=20.5;let xh=1.53*Math.exp((sh.att-sa.def)/k+(sh.mid-sa.mid)/80)*1.12;let xa=1.53*Math.exp((sa.att-sh.def)/k+(sa.mid-sh.mid)/80)*0.9;return [clamp(xh,0.15,4.2),clamp(xa,0.12,3.8)];}
 // góly po úsecích zápasu: vedoucí tým při náskoku hru zklidní, prohrávající riskuje (realistické rozdělení skóre, méně přestřelek)
 function gsMul(my,th,late){return gsMul0(my,th,late)*(my+th>=6?0.3:my+th===5?0.5:my+th===4?0.68:my+th===3?0.92:1);}
 function gsMul0(my,th,late){const d=my-th;if(d>=4)return 0.3;if(d===3)return 0.45;if(d===2)return 0.66;if(d===1)return late?0.88:0.97;if(d===-1)return late?1.12:1.02;if(d<=-3)return 0.8;if(d===-2)return 0.9;return late?0.97:1;}
@@ -2422,7 +2422,7 @@ function ownDataPrice(c){let sq=0;const ovs=[];for(const p of c.p){const a=2026-
 function clubPrice(id){const c=S.clubs[id];if(!c)return 0;const sq=clubPlayers(id).reduce((s,p)=>s+playerValue(p),0);let v=ownPriceF(sq,c.rep||60,c.money||0);
  const f=S.cl4&&S.cl4[id];if(f)v*=1+0.05*((f.fac.st||0)+(f.fac.tr||0)*0.5+(f.fac.yo||0)*0.5);return Math.round(v/1e5)*1e5;}
 function ownDebt(){return S.own?(S.own.loans||[]).reduce((s,l)=>s+l.a,0):0;}
-function ownSaleValue(f){const o=S.own;return Math.max(0,Math.round((clubPrice(S.clubId)*(f||1)*(1-(o.inv||0))-ownDebt())/1e4)*1e4);}
+function ownSaleValue(f){const o=S.own||{};return Math.max(0,Math.round((clubPrice(S.clubId)*(f||1)*(1-(o.inv||0))-ownDebt())/1e4)*1e4);}
 function ownNews(ic,t){if(!S||!S.own)return;const o=S.own;if(o){o.news=o.news||[];o.news.unshift({ic,t,s:S.season,r:S.round});if(o.news.length>40)o.news.length=40;}addNews(ic,t);}
 function ownRepAdd(d){if(!S||!S.own)return;const o=S.own;if(!o)return;o.rep=clamp(Math.round((o.rep+d)*10)/10,0,100);}
 function ownRepTxt(r){return r>=80?'milovaný':r>=65?'oblíbený':r>=50?'respektovaný':r>=35?'kontroverzní':r>=20?'neoblíbený':'nenáviděný';}
@@ -2481,7 +2481,7 @@ function ownTakeList(){const me=myClub();const ids=Object.keys(S.clubs).filter(i
  const list=ids.map(id=>[id,clubPrice(id)]).filter(([id,p])=>p*0.7<=have*1.6).slice(0,14);
  modal(`<h2>🔄 Převzít jiný klub</h2><div class="small mut" style="margin-bottom:8px">Současný klub prodáš za zhruba ${fmtMoney(ownSaleValue())}. Na osobním kontě máš ${fmtMoney(S.wallet)}.</div>
  ${list.length?list.map(([id,p])=>{const c=S.clubs[id];return `<button class="lgpick" onclick="ownBuySheet('${id}')">${badge(c)}<span class="t"><b>${esc(c.n)}</b><small>${esc(leagueLabel(c.lg))} · cena ${fmtMoney(p)}${p*0.7<=have?'':' · zatím moc drahé'}</small></span></button>`;}).join(''):'<div class="empty">Na žádný klub teď nemáš.</div>'}`);}
-function ownSell(forced){const v=ownSaleValue(forced?0.7:1);const old=myClub().n;const prof=v-(S.own.price0||0)*(1-(S.own.inv||0));
+function ownSell(forced){if(!S||!S.own)return;const v=ownSaleValue(forced?0.7:1);const old=myClub().n;const prof=v-(S.own.price0||0)*(1-(S.own.inv||0));
  S.wallet+=v;if(!forced&&prof>0)ach('own_sell');addNews('🤝',`${S.manager} ${forced?'byl donucen prodat':'prodal'} klub ${old} za ${fmtMoney(v)}.`);
  const ids=Object.keys(S.clubs).filter(id=>id!==S.clubId&&!S.clubs[id].tmp).map(id=>[id,clubPrice(id)]).filter(([id,p])=>p*0.7<=S.wallet).sort((a,b)=>b[1]-a[1]).slice(0,10);
  const role=S.role;S.ownLast={role,s:S.season};
@@ -4168,7 +4168,7 @@ function m2Draw(cv,st){const M=MS.M;const ctx=cv.getContext('2d');const dpr=cv._
  /* překryvy */
  st._ly=[];st.ov.forEach(o=>{const a=Math.min(1,(o.dur-(st.t-o.t0))/300);ctx.globalAlpha=Math.max(0,a);
   if(o.tp==='big'){const fs=Math.min(30,W*0.08);ctx.font='900 '+fs+'px -apple-system,system-ui,sans-serif';ctx.fillStyle='rgba(0,0,0,.55)';const tw=ctx.measureText(o.tx).width+24;ctx.fillRect(W/2-tw/2,H/2-fs*0.8,tw,fs*1.6);ctx.fillStyle=o.c||'#fff';ctx.fillText(o.tx,W/2,H/2+1);}
-  else if(o.tp==='lbl'){ctx.font='bold 12px -apple-system,system-ui,sans-serif';const tw=ctx.measureText(o.tx).width+10;const x=Math.max(tw/2+2,Math.min(W-tw/2-2,X(o.x)));let y=Math.max(10,Math.min(H-10,Y(o.y)-r-8));(st._ly||(st._ly=[])).forEach(q=>{if(Math.abs(q[0]-x)<(q[2]+tw)/2&&Math.abs(q[1]-y)<17)y=q[1]+(q[1]>H-30?-18:18);});st._ly.push([x,y,tw]);ctx.fillStyle='rgba(0,0,0,.6)';ctx.fillRect(x-tw/2,y-8,tw,16);ctx.fillStyle='#fff';ctx.fillText(o.tx,x,y);}
+  else if(o.tp==='lbl'){ctx.font='bold 12px -apple-system,system-ui,sans-serif';const tw=ctx.measureText(o.tx).width+10;const x=Math.max(m+tw/2+3,Math.min(W-m-tw/2-3,X(o.x)));let y=Math.max(m+10,Math.min(H-m-10,Y(o.y)-r-8));(st._ly||(st._ly=[])).forEach(q=>{if(Math.abs(q[0]-x)<(q[2]+tw)/2&&Math.abs(q[1]-y)<17)y=q[1]+(q[1]>H-30?-18:18);});st._ly.push([x,y,tw]);ctx.fillStyle='rgba(0,0,0,.6)';ctx.fillRect(x-tw/2,y-8,tw,16);ctx.fillStyle='#fff';ctx.fillText(o.tx,x,y);}
   else if(o.tp==='card'){const x=X(o.x),y=Math.max(14,Y(o.y)-r-12);ctx.fillStyle=o.c;ctx.fillRect(x-5,y-8,10,14);ctx.strokeStyle='#000';ctx.lineWidth=1;ctx.strokeRect(x-5,y-8,10,14);if(o.tx){ctx.font='bold 11px -apple-system,system-ui,sans-serif';const tw=ctx.measureText(o.tx).width+8;const lx=Math.max(tw/2+2,Math.min(W-tw/2-2,x));const ly=y<30?y+24:y-16;ctx.fillStyle='rgba(0,0,0,.6)';ctx.fillRect(lx-tw/2,ly-7,tw,14);ctx.fillStyle='#fff';ctx.fillText(o.tx,lx,ly);}}
   else if(o.tp==='flag'){const x=X(o.x),y=Y(o.y);ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x,y-14);ctx.stroke();ctx.fillStyle='#ffeb3b';ctx.fillRect(x,y-14,9,6);}
   ctx.globalAlpha=1;ctx.font='bold '+Math.round(r*1.05)+'px -apple-system,system-ui,sans-serif';});
