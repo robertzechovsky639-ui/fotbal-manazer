@@ -968,8 +968,8 @@ function renderBets(){const lim=betLimitLeft();const net=S.betStats.won-S.betSta
  h+=`<div class="card"><h3>Zahraniční liga v nabídce</h3><select onchange="UI.betW=this.value;render()">${wl.map(l=>`<option value="${l.code}" ${l.code===(UI.betW||'ENG1')?'selected':''}>${esc(l.country)} – ${esc(l.name)}</option>`).join('')}</select></div>`;
  if(!gs.length)h+='<div class="card"><div class="empty">Teď nejsou v nabídce žádné zápasy.</div></div>';
  gs.forEach(g=>{h+=`<div class="card" style="padding:8px 10px"><h3>${esc(g.name)}</h3>${g.ms.map(m=>{const o=matchOdds(m.h,m.a,m.mid);const inS=k=>sl.some(x=>x.mid===m.mid&&x.mk===k);const open=UI.betOpen===m.mid;
-  const b=k=>`<button class="odd ${inS(k)?'on':''}" onclick="toast(addToSlip('${m.mid}','${k}'));saveGame();render()"><small>${MK_SHORT[k]}</small><b>${czOdd(o[k])}</b></button>`;
-  return `<div class="bm"><div class="row small" style="gap:6px;margin-bottom:6px">${badge(CL(m.h),'sm')}<b style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(CL(m.h).n)} – ${esc(CL(m.a).n)}</b>${badge(CL(m.a),'sm')}</div><div class="odds">${b('1')}${b('X')}${b('2')}<button class="odd more" onclick="UI.betOpen=${open?'null':`'${m.mid}'`};render()"><small>další</small><b>${open?'▲':'▼'}</b></button></div>${open?`<div class="odds" style="margin-top:6px">${b('o25')}${b('u25')}${b('gg')}${b('ng')}</div>`:''}${typeof volMini==='function'?volMini(m.h,m.a,m.mid):''}</div>`;}).join('')}</div>`;});
+  const b=k=>`<button class="odd ${inS(k)?'on':''}" onclick="toast(addToSlip('${m.mid}','${k}'));saveGame();render()"><small>${MK_SHORT[k]}</small><b>${czOdd(o[k])}${typeof v14Arr==='function'?v14Arr(m.mid,k):''}</b></button>`;
+  return `<div class="bm"><div class="row small" style="gap:6px;margin-bottom:6px">${badge(CL(m.h),'sm')}<b style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(CL(m.h).n)} – ${esc(CL(m.a).n)}</b>${badge(CL(m.a),'sm')}</div><div class="odds">${b('1')}${b('X')}${b('2')}<button class="odd more" onclick="UI.betOpen=${open?'null':`'${m.mid}'`};render()"><small>další</small><b>${open?'▲':'▼'}</b></button></div>${open?`<div class="odds" style="margin-top:6px">${b('o25')}${b('u25')}${b('gg')}${b('ng')}</div>`:''}${typeof volMini==='function'?volMini(m.h,m.a,m.mid):''}${typeof v14HistBtn==='function'?v14HistBtn(m.mid):''}</div>`;}).join('')}</div>`;});
  return h;}
  const open=S.bets.filter(b=>b.st==='open'),done=S.bets.filter(b=>b.st!=='open').slice(0,UI.betAll?80:12);
  const bRow=b=>`<div class="betrow ${b.st}"><div class="row small"><b>${b.legs.length>1?'AKO '+b.legs.length+' tipů':esc(midTitle(b.legs[0].mid))}</b><span class="sp"></span><span class="tag ${b.st==='won'?'g':b.st==='lost'?'r':''}">${{open:'čeká',won:'výhra',lost:'prohra',void:'vráceno'}[b.st]}</span></div>
@@ -2130,6 +2130,7 @@ function lvPanel(w){const M=lvM(w);if(!M)return '';const end=M.ended||(w==='pm'&
   <div class="seg" style="margin-bottom:6px">${[100,200,500,1000].map(v=>`<button class="${st===v?'on':''}" onclick="UI.lbStake=${v};updLive()">${fmtMoney(v)}</button>`).join('')}</div>
   <div class="${G[2].length===2?'grid2':'grid3'}" style="gap:6px">${G[2].map(k=>{const op=lvOpen(M,k);return `<button class="odd" ${op?`onclick="lvBet('${w}','${k}')"`:'disabled style="opacity:.45"'}><small>${LV_SH[k]}</small><b>${op?czOdd(lvOdd(pr[k])):'—'}</b></button>`;}).join('')}</div>`;
   if(M.min>=(M.et?118:88))h+=`<div class="tiny mut" style="margin-top:6px">Sázky jsou v závěru zápasu uzavřené.</div>`;}
+ if(own&&typeof v14LvHtml==='function')h+=v14LvHtml(M);
  const L=lvList(w);h+=L.map((b,i)=>`<div class="row small" style="padding:5px 0;border-top:1px solid rgba(255,255,255,.06);margin-top:6px;gap:6px"><span style="flex:1;min-width:0">${LV_MK[b.mk]} · ${czOdd(b.o)} · ${fmtMoney(b.stake)} <span class="tiny mut">(${b.min}')</span></span>${b.co?`<span class="tiny good">vybráno ${fmtMoney(b.co)}</span>`:b.res?`<span class="tiny ${b.res==='won'?'good':'bad'}">${b.res==='won'?'výhra '+fmtMoney(b.win||Math.round(b.stake*b.o)):'prohra'}</span>`:end?'<span class="tiny mut">vyhodnocuje se</span>':`<button class="btn ghost" style="min-height:44px;padding:0 10px" onclick="lvCashout('${w}',${i})">Vybrat ${fmtMoney(lvCoVal(w,b))}</button>`}</div>`).join('');
  h+=`<div class="tiny mut" style="margin-top:6px">${own?(u>=0?'Kurzy se mění každou minutu podle skóre, času a vyloučení. Sázka proti vlastnímu týmu je velké riziko, disciplinární komise si jí může všimnout.':''):'Zápas, který se hraje ve stejnou dobu jako ten tvůj.'} Předčasný výběr vyplatí hned část výhry podle aktuálního stavu.${M.ko&&M.ko.decide?' Sázky na výsledek a góly platí včetně prodloužení.':''}</div></div>`;
  return h;}
@@ -4235,7 +4236,7 @@ function v14AddCalc(M,h){const lo=h===0?0:45,hi=h===0?46:91;let g=0,sb=0,inj=0,v
 try{const _sm14=stepMinute;stepMinute=function(M){if(M&&!M.ended){if(!M._a0)M._a0=[(M.added||[])[0]||1,(M.added||[])[1]||3];
   const h=M.half===1&&M.min===44?0:M.half===2&&M.min===89?1:-1;
   if(h>=0&&!(M._a14||[])[h]){M._a14=M._a14||[];M._a14[h]=1;const inc=Math.max(0,(M.added[h]||0)-M._a0[h]);M.added[h]=Math.min(15,v14AddCalc(M,h)+inc);
-   const out=_sm14(M);if(!M.ended&&M.min===(h===0?45:90)){const ev={m:M.min,t:'fill',add14:M.added[h],tx:`⏱️ Čtvrtý rozhodčí ukazuje nastavení: +${M.added[h]} ${czPlural(M.added[h],'minuta','minuty','minut')}.`};const inEv=!out.length||M.ev.indexOf(out[out.length-1])>=0;out.push(ev);if(inEv&&M.ev.indexOf(ev)<0)M.ev.push(ev);}return out;}}
+   const out=_sm14(M);if(!M.ended&&M.min===(h===0?45:90)){const ev={m:M.min,t:'fill',add14:M.added[h],tx:`⏱️ Čtvrtý rozhodčí ukazuje nastavení: +${M.added[h]} ${czPlural(M.added[h],'minuta','minuty','minut')}.`};out.push(ev);if(M.ev.indexOf(ev)<0)M.ev.push(ev);}return out;}}
  return _sm14(M);};}catch(e){}
 try{const _m2s14b=m2Script;m2Script=function(M,st,e){if(e&&e.add14)return [{d:1100,f:()=>{m2Ov(st,{tp:'lbl',tx:'⏱️ +'+e.add14,x:0.5,y:0.9,dur:1400});}}];return _m2s14b(M,st,e);};}catch(e){}
 /* zprávy z kabin před zápasem */
@@ -4247,9 +4248,54 @@ function v14News(F){const opp=F.h===S.clubId?F.a:F.h;const oc=S.clubs[opp]||{};c
  rows.push(mo.length?`<div class="small" style="padding:2px 0">❌ Soupeři chybí: ${mo.map(ln).join(', ')}</div>`:`<div class="small" style="padding:2px 0">✅ Soupeř má k dispozici kompletní kádr.</div>`);
  if(mm.length)rows.push(`<div class="small" style="padding:2px 0">🩹 Nám chybí: ${mm.map(ln).join(', ')}</div>`);
  const top=pl(opp).filter(available).sort((a,b)=>b.ovr-a.ovr);const r=v14Hash(F.h+'|'+F.a+'|'+(S.week||0)+'|'+(S.season||0));
- if(top.length>=4){const p=top[r%4],q=top[(r>>3)%top.length];const T=[`${p.n} podle místních médií v týdnu trénoval jen individuálně, nakonec by ale měl nastoupit.`,`Trenér soupeře na tiskovce chválil formu hráče ${q.n}.`,`${p.n} se vrací do sestavy po odpočinku v minulém kole.`,`Soupeř v týdnu trénoval hlavně standardní situace.`,`Na tréninku soupeře byl vidět i ${q.n}, který se dával dohromady po drobném zranění.`,`Domácí média čekají, že soupeř začne opatrněji a bude hrát na brejky.`];rows.push(`<div class="small mut" style="padding:2px 0">🗞️ ${esc(T[(r>>6)%T.length])}</div>`);}
+ if(top.length>=4){const p=top[r%4],q=top[(r>>>3)%top.length];const T=[`${p.n} podle místních médií v týdnu trénoval jen individuálně, nakonec by ale měl nastoupit.`,`Trenér soupeře na tiskovce chválil formu hráče ${q.n}.`,`${p.n} se vrací do sestavy po odpočinku v minulém kole.`,`Soupeř v týdnu trénoval hlavně standardní situace.`,`Na tréninku soupeře byl vidět i ${q.n}, který se dával dohromady po drobném zranění.`,`Domácí média čekají, že soupeř začne opatrněji a bude hrát na brejky.`];rows.push(`<div class="small mut" style="padding:2px 0">🗞️ ${esc(T[(r>>>6)%T.length])}</div>`);}
  return `<div class="card" style="padding:10px 12px"><h3>Zprávy z kabin</h3>${rows.join('')}</div>`;}
 try{const _pre14=v4PreHtml;v4PreHtml=function(F){let a='';try{a=v14News(F);}catch(e){}return a+_pre14(F);};}catch(e){}
+
+/* v14.1: vývoj kurzů 1/X/2 (před zápasem i live), chybné kurzy vyznačené; uložení výsledků pro otevřené sázky */
+function v14O(){if(!S.v14o||typeof S.v14o!=='object')S.v14o={};return S.v14o;}
+function v14R2(x){return Math.round(x*100)/100;}
+function v14Drift(o,d){if(!d)return o;const r=Object.assign({},o);r['1']=v14R2(Math.max(1.02,o['1']*(1+d)));r['2']=v14R2(Math.max(1.02,o['2']*(1-d)));return r;}
+(function(){const _mo=matchOdds;matchOdds=function(h,a,seed){const o=_mo.apply(this,arguments);try{if(seed&&S&&S.v14o){const R=S.v14o[seed];if(R&&R.d)return v14Drift(o,R.d);}}catch(e){}return o;};})();
+function v14Err(mid){try{return typeof v13Find==='function'?v13Find(mid):null;}catch(e){return null;}}
+function v14Track(m){const O=v14O();let R=O[m.mid];const tri=o=>[o['1'],o['X'],o['2']];
+ if(!R){const g=(Math.random()+Math.random()+Math.random()-1.5)*0.07;const d0=Math.max(-0.09,Math.min(0.09,g));const d1=d0*0.5+(Math.random()-0.5)*0.03;const d2=d0*0.18+(Math.random()-0.5)*0.016;
+  R=O[m.mid]={d:d0,h:[],t:Date.now()};const base=(typeof __v13mo==='function'?__v13mo:matchOdds)(m.h,m.a,m.mid);
+  R.h.push({l:'Otevření',o:tri(v14Drift(base,d0))});R.h.push({l:Math.abs(d1-d0)>0.02?(d1<d0?'Sázkaři hrají na domácí':'Sázkaři hrají na hosty'):'Během týdne',o:tri(v14Drift(base,d1))});R.d=d2;}
+ const cur=tri(matchOdds(m.h,m.a,m.mid));const pe=v14Err(m.mid);const last=R.h[R.h.length-1];
+ const diff=!last||cur.some((v,i)=>Math.abs(v-last.o[i])>=0.02);
+ if(diff){let l='Zprávy ze sestav';if(pe)l=`Chybný kurz (${pe.bk||'kancelář'})`;else if(last&&last.e)l='Kurz opraven';else if(R.h.length===2)l='Teď';R.h.push(pe?{l,o:cur,e:1}:{l,o:cur});if(R.h.length>8)R.h.splice(1,R.h.length-8);}
+ return R;}
+function v14Prune(){const O=v14O();const keep={};try{betGroups().forEach(g=>g.ms.forEach(m=>keep[m.mid]=1));}catch(e){}const ks=Object.keys(O).filter(k=>k!=='_lv');if(ks.length>60)ks.sort((a,b)=>(O[a].t||0)-(O[b].t||0)).slice(0,ks.length-60).forEach(k=>{if(!keep[k])delete O[k];});}
+function v14Arr(mid,k){const R=S.v14o&&S.v14o[mid];if(!R||!R.h.length)return '';const i={'1':0,'X':1,'2':2}[k];if(i==null)return '';const a=R.h[0].o[i],b=R.h[R.h.length-1].o[i];if(Math.abs(a-b)<0.02)return '';
+ return b<a?'<i style="font-style:normal;color:#5fd38d;font-size:11px;margin-left:2px">▼</i>':'<i style="font-style:normal;color:#ff8a65;font-size:11px;margin-left:2px">▲</i>';}
+function v14HistBtn(mid){const R=S.v14o&&S.v14o[mid];if(!R||R.h.length<2)return '';const on=UI.v14h===mid;
+ let h=`<button class="btn ghost sm w100" style="min-height:44px;margin-top:6px" onclick="UI.v14h=${on?'null':`'${mid}'`};render()">📈 Vývoj kurzu${R.h.some(x=>x.e)?' · ⚠️ chyba':''} ${on?'▲':'▼'}</button>`;
+ if(on){h+=`<div class="v14h" style="margin-top:4px">${v14Rows(R.h)}<div class="tiny mut" style="margin-top:4px">▼ kurz klesá (sázky jdou na tenhle tip), ▲ kurz roste.</div></div>`;}return h;}
+function v14Rows(pts){let prev=null;return pts.map(p=>{const c=p.o.map((v,i)=>{const ar=prev?(v<prev.o[i]-0.01?'<span style="color:#5fd38d">▼</span>':v>prev.o[i]+0.01?'<span style="color:#ff8a65">▲</span>':''):'';return `<span style="display:inline-block;min-width:30%;text-align:right">${czOdd(v)}${ar}</span>`;}).join('');prev=p;
+ return `<div class="tiny" style="display:flex;gap:6px;padding:3px 0;border-top:1px solid rgba(255,255,255,.06)${p.e?';color:#ffb74d':''}"><span style="flex:0 0 42%;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.m!=null?p.m+"' ":''}${p.e?'⚠️ ':''}${esc(p.l)}</span><span style="flex:1;display:flex;justify-content:space-between">${c}</span></div>`;}).join('');}
+/* live */
+function v14LvPt(M,l){try{const pr=lvProbs(M);const ks=['1','X','2'];const o=ks.map(k=>v14R2(lvOdd(pr[k])));const raw=ks.map(k=>v14R2(clamp(chOdd(pr[k]),1.01,50)));const e=o.some((v,i)=>Math.abs(v-raw[i])>0.015);
+ M.v14lh=M.v14lh||[];const p={m:typeof minLbl==='function'?minLbl(M):M.min,l:e?'Chybný live kurz':l,o};if(e)p.e=1;M.v14lh.push(p);if(M.v14lh.length>24)M.v14lh.splice(1,1);}catch(err){}}
+try{const _sm141=stepMinute;stepMinute=function(M){const out=_sm141.apply(this,arguments);try{if(M&&(M.h.user||M.a.user)&&typeof lvProbs==='function'){
+  if(!M.v14lh||!M.v14lh.length)v14LvPt(M,'Výkop');
+  const nm=i=>{const c=CL(M.sides[i].cid);return c?c.n:'';};
+  (out||[]).forEach(e=>{if(e.t==='goal')v14LvPt(M,`⚽ ${M.score[0]}:${M.score[1]} (${nm(e.s)})`);else if(e.t==='red')v14LvPt(M,`🟥 Červená (${nm(e.s)})`);});
+  const L=M.v13live;const on=!!(L&&M.min<=L.until&&!M.ended);if(on&&!M._v14le){M._v14le=1;v14LvPt(M,'Chybný live kurz');}else if(!on&&M._v14le===1){M._v14le=2;v14LvPt(M,'Kurz opraven');}
+  if(M.ended&&!M._v14sv){M._v14sv=1;v14LvPt(M,'Konec');const O=v14O();O._lv={t:CL(M.h.cid).n+' – '+CL(M.a.cid).n,h:M.v14lh.slice(-24)};}}}catch(e){}return out;};}catch(e){}
+function v14Chart(pts){if(!pts||pts.length<2)return '';const W=300,H=86,n=pts.length,lo=Math.log(1),hi=Math.log(20);const y=v=>H-6-(Math.log(Math.min(20,Math.max(1,v)))-lo)/(hi-lo)*(H-12);const x=i=>8+i*(W-16)/(n-1);
+ const cols=['#ffd54a','#b0bec5','#64b5f6'];let s=`<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" style="display:block;margin-top:6px;background:rgba(255,255,255,.04);border-radius:10px">`;
+ [1.5,3,10].forEach(v=>{s+=`<line x1="0" x2="${W}" y1="${y(v)}" y2="${y(v)}" stroke="rgba(255,255,255,.08)"/><text x="${W-4}" y="${y(v)-2}" font-size="9" fill="rgba(255,255,255,.4)" text-anchor="end">${String(v).replace('.',',')}</text>`;});
+ pts.forEach((p,i)=>{if(p.e)s+=`<rect x="${x(i)-5}" y="0" width="10" height="${H}" fill="rgba(255,152,0,.25)"/>`;});
+ for(let k=0;k<3;k++)s+=`<polyline fill="none" stroke="${cols[k]}" stroke-width="2" points="${pts.map((p,i)=>x(i).toFixed(1)+','+y(p.o[k]).toFixed(1)).join(' ')}"/>`;
+ return s+`</svg><div class="tiny" style="display:flex;gap:10px;margin-top:3px"><span style="color:${cols[0]}">━ 1</span><span style="color:${cols[1]}">━ X</span><span style="color:${cols[2]}">━ 2</span>${pts.some(p=>p.e)?'<span style="color:#ffb74d">▮ chybný kurz</span>':''}</div>`;}
+function v14LvHtml(M){if(!M||!M.v14lh||M.v14lh.length<1)return '';const on=!!UI.v14lv;const pts=M.v14lh;
+ return `<button class="btn ghost sm w100" style="min-height:44px;margin-top:8px" onclick="UI.v14lv=${on?0:1};updLive()">📈 Vývoj kurzu 1/X/2${pts.some(p=>p.e)?' · ⚠️':''} ${on?'▲':'▼'}</button>${on?v14Chart(pts)+'<div style="margin-top:4px">'+v14Rows(pts.slice(-8))+'</div>':''}`;}
+function v14LastLv(){const L=S.v14o&&S.v14o._lv;if(!L||!L.h||L.h.length<2)return '';return `<div class="card"><h3>📈 Live kurzy posledního zápasu</h3><div class="small mut">${esc(L.t)}</div>${v14Chart(L.h)}<div style="margin-top:4px">${v14Rows(L.h.slice(-8))}</div></div>`;}
+try{const _rb141=renderBets;renderBets=function(){try{if((UI.betTab||'offer')==='offer'){betGroups().forEach(g=>g.ms.forEach(m=>v14Track(m)));v14Prune();}}catch(e){}let h=_rb141.apply(this,arguments);try{if(UI.betTab==='my')h+=v14LastLv();}catch(e){}return h;};}catch(e){}
+/* výsledky zahraničních zápasů pro otevřené sázky přežijí i znovunačtení */
+try{const _sg141=saveGame;saveGame=function(){try{if(S&&S.bets&&typeof BETRES!=='undefined'){const keep={};S.bets.forEach(b=>{if(b.st==='open')(b.legs||[]).forEach(l=>{if(l.st!=='won'&&l.st!=='lost'&&BETRES[l.mid])keep[l.mid]=BETRES[l.mid];});});if(Object.keys(keep).length)S.v14r=keep;else delete S.v14r;}}catch(e){}return _sg141.apply(this,arguments);};}catch(e){}
+try{const _st141=settleBets;settleBets=function(){try{if(S&&S.v14r&&typeof BETRES!=='undefined'){for(const k in S.v14r)if(!BETRES[k])BETRES[k]=S.v14r[k];delete S.v14r;}}catch(e){}return _st141.apply(this,arguments);};}catch(e){}
 
 
 // ---------- boot ----------
