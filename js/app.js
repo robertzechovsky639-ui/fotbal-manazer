@@ -401,7 +401,7 @@ function spMul(sd){if(!sd.user)return 1;const tk=sd.tac.sp&&onPitch(sd).includes
 function bribePenMul(M,i){const b=M.bribe;if(!b)return 1;return b.side===i?1+0.35*b.l:Math.max(0.4,1-0.15*b.l);}
 function bribeCardMul(M,i){const b=M.bribe;if(!b)return 1;return b.side===i?Math.max(0.5,1-0.15*b.l):1+0.25*b.l;}
 function chance(M,i,kind){const sd=M.sides[i],op=M.sides[1-i];const m=M.min;const out=[];let sh=shooterOf(sd,kind);if(!sh)return out;const gk=P(gkOf(op));
- let q;const pen=!kind&&RNG()<0.024*bribePenMul(M,i);if(pen){q=0.76;const tk=sd.tac.pk&&onPitch(sd).includes(sd.tac.pk)?P(sd.tac.pk):null;if(tk)sh=tk;}else{q=clamp(0.012+Math.pow(RNG(),5.5)*0.62,0.01,0.6);if(kind==='head')q*=0.8;if(op.tac.trap&&!kind&&RNG()<0.07)q=Math.max(q,0.38);}
+ let q;const pen=!kind&&RNG()<0.0125*bribePenMul(M,i);if(pen){q=0.76;const tk=sd.tac.pk&&onPitch(sd).includes(sd.tac.pk)?P(sd.tac.pk):null;if(tk)sh=tk;}else{q=clamp(0.012+Math.pow(RNG(),5.5)*0.62,0.01,0.6);if(kind==='head')q*=0.8;if(op.tac.trap&&!kind&&RNG()<0.07)q=Math.max(q,0.38);}
  const shotQ=(sh.a[1]+(pen?sh.a[1]:sh.ovr))/2;const gkQ=gk?gk.ovr*(0.85+0.15*gk.cond/100):45;
  let pg=q*clamp(1+(shotQ-gkQ-8)/160,0.8,1.2)*(M.fx&&!pen?M.fx.acc:1);M.stats[i].sh++;M.stats[i].xg+=q;
  const S1=pSurname(sh),K=gk?pSurname(gk):'brankář';
@@ -419,8 +419,8 @@ function chance(M,i,kind){const sd=M.sides[i],op=M.sides[1-i];const m=M.min;cons
   else{if(q>0.3)M.rt[sh.id]=(M.rt[sh.id]||6)-0.15;out.push({m,t:'miss',s:i,p:sh.id,tx:pen?`${S1} penaltu přestřelil!`:fillT(pick(T_MISS),{S:S1})});}}
  return out;}
 function pickAssistM(sd,ex,kind){const ids=onPitch(sd).filter(id=>id!==ex);return wpick(ids.map(P),p=>{const g=GRP(p.pos);return (g==='F'?2.4:g==='M'?3.2:g==='D'?(kind==='head'?0.6:1.1):0.05)*Math.pow(Math.max(20,p.a[2])/60,2)*(['LM','RM','LW','RW','LB','RB'].includes(p.pos)&&kind==='head'?2:1);});}
-function card(M,i){const sd=M.sides[i];const m=M.min;const ids=onPitch(sd).filter(id=>P(id).pos!=='GK');const id=wpick(ids,x=>(GRP(P(x).pos)==='D'?2:GRP(P(x).pos)==='M'?1.5:0.8)*(typeof persCardMul==='function'?persCardMul(x):1)*(M.yc&&M.yc[x]?0.35:1));if(!id)return [];
- const out=[];M.yc=M.yc||{};const direct=RNG()<0.03;
+function card(M,i){const sd=M.sides[i];const m=M.min;const ids=onPitch(sd).filter(id=>P(id).pos!=='GK');const id=wpick(ids,x=>(GRP(P(x).pos)==='D'?2:GRP(P(x).pos)==='M'?1.5:0.8)*(typeof persCardMul==='function'?persCardMul(x):1)*(M.yc&&M.yc[x]?0.15:1));if(!id)return [];
+ const out=[];M.yc=M.yc||{};const direct=RNG()<0.016;
  if(direct||M.yc[id]){M.stats[i].rc++;M.rt[id]=(M.rt[id]||6)-1.5;out.push({m,t:'red',s:i,p:id,tx:direct?`🟥 Červená karta! ${nm(id)} zastavil soupeře v brejku a jde předčasně do kabin.`:`🟥 Druhá žlutá a červená! ${nm(id)} musí opustit hřiště.`});P(id)._mred=direct?rint(1,3):1;removeFromPitch(M,i,id);sd.red++;}
  else{M.yc[id]=1;M.stats[i].yc++;M.rt[id]=(M.rt[id]||6)-0.3;out.push({m,t:'yel',s:i,p:id,tx:`🟨 Žlutá karta: ${nm(id)} ${pick(['za zákrok zezadu.','za taktický faul.','za protesty proti rozhodnutí sudího.','za podražení v protiútoku.','za zdržování hry.'])}`});P(id)._myc=(P(id)._myc||0)+1;}
  return out;}
@@ -4752,7 +4752,7 @@ Object.assign(PRESS_Q,{refErrAg:['Rozhodčí dnes udělal chybu, která vás po�
  refErrFor:['Opakované záznamy ukazují, že vám rozhodčí dnes pomohl. Co na to?',[['Přiznávám, měli jsme štěstí.',{mor:0,fans:1,board:1}],['Rozhoduje se na hřišti, ne v televizi.',{mor:1,fans:1,board:-1}],['Za celou sezónu se to vyrovná.',{mor:0,fans:0,board:0}]]]});
 (function(){const _p=pressPick;pressPick=function(kind,F,M){if(kind!=='pre'&&M&&M.v16pq&&!M.v16pqd&&!(S.scandal&&S.scandal.s===S.season&&!S.scandal.asked)){M.v16pqd=1;return M.v16pq;}return _p.apply(this,arguments);};})();
 // celkový počet gólů zůstává stejný: neuznané góly a chyby rozhodčích se vyrovnají mírně nižší produktivitou
-(function(){const _rc=recalc;recalc=function(M){_rc.apply(this,arguments);try{if(M&&M.xg&&M.sides){if(M._v16va==null)M._v16va=v16HasVar(M)?1:0;const f=M._v16va?0.978:0.96;M.xg=[M.xg[0]*f,M.xg[1]*f];}}catch(x){}};})();
+(function(){const _rc=recalc;recalc=function(M){_rc.apply(this,arguments);try{if(M&&M.xg&&M.sides){if(M._v16va==null)M._v16va=v16HasVar(M)?1:0;const f=M._v16va?1.04:1.008;M.xg=[M.xg[0]*f,M.xg[1]*f];}}catch(x){}};})();
 
 // ===== v14.6.1: kurzy před zápasem z aktuální síly týmu, živé kurzy navazují na závěrečný kurz =====
 const V161={c:{}};
@@ -4791,12 +4791,192 @@ function v161Offs(M){M.lvOff=null;const P=v161Pre(M);if(!P)return;const r=lvProb
  M.lvOff=off;M.lvR0=Math.max(1,v14LvRem(M));try{const l=v14LvLines(M);M.lvLn0={c:l.c,k:l.k};}catch(e){M.lvLn0={};}}
 function v161W(M){if(!M.lvOff||M.ended)return 0;return clamp(v14LvRem(M)/(M.lvR0||95),0,1);}
 function v161Apply(M,r){const w=v161W(M);if(!w)return r;const o=M.lvOff;let ln=null;const L0=M.lvLn0||{};
- for(const k in o){if(r[k]==null)continue;if(/^l[ck]/.test(k)){if(!ln){try{ln=v14LvLines(M);}catch(e){ln={};}}if(k[1]==='c'?ln.c!==L0.c:ln.k!==L0.k)continue;}r[k]=clamp(r[k]+o[k]*w,0.001,0.999);}return r;}
+ for(const k in o){if(r[k]==null)continue;if(/^l[ck]/.test(k)){if(!ln){try{ln=v14LvLines(M);}catch(e){ln={};}}if(k[1]==='c'?ln.c!==L0.c:ln.k!==L0.k)continue;}r[k]=clamp(r[k]+o[k]*w,0.001,0.999);}
+ // přesné výsledky: součet všech skóre musí zůstat 100 %
+ let sl=0,sr=0,any=false;for(const k in r)if(k.startsWith('cs_')){if(o[k]!=null){sl+=r[k];any=true;}else sr+=r[k];}
+ if(any){if(sl<0.999&&sr>0){const f=(1-sl)/sr;for(const k in r)if(k.startsWith('cs_')&&o[k]==null)r[k]*=f;}else{const t=sl+sr;for(const k in r)if(k.startsWith('cs_'))r[k]/=t;}}
+ return r;}
 (function(){const _lp=lvProbs;lvProbs=function(M){const r=_lp.apply(this,arguments);try{if(M&&M.lvOff&&!window.__v161off)v161Apply(M,r);}catch(e){}return r;};
  if(typeof v14LvP==='function'){const _p=v14LvP;v14LvP=function(M,b){const v=_p.apply(this,arguments);try{if(M&&M.lvOff&&b&&b.ln&&/^l[ck]/.test(b.mk)&&!window.__v161off&&M.lvOff[b.mk]!=null){const L0=M.lvLn0||{};if(/^lc/.test(b.mk)?b.ln.c===L0.c:b.ln.k===L0.k)return clamp(v+M.lvOff[b.mk]*v161W(M),0.001,0.999);}}catch(e){}return v;};}})();
 // ----- dvojitá šance a sázka bez remízy vždy navazují na zobrazený kurz 1X2 (dřív se počítaly z jiného modelu remízy) -----
 (function(){const _mo=matchOdds;matchOdds=function(h,a,mid){const o=_mo.apply(this,arguments);try{if(o&&o['1']&&o['X']&&o['2']&&o['1X']&&!window.__v161off){const q=[1/o['1'],1/o['X'],1/o['2']];const s=q[0]+q[1]+q[2];const p1=q[0]/s,pX=q[1]/s,p2=q[2]/s;const od=p=>roundOdd(1/(Math.max(0.005,p)*1.05));
  const r=Object.assign({},o);r['1X']=od(p1+pX);r['12']=od(p1+p2);r['X2']=od(pX+p2);if(o.dnb1){r.dnb1=od(p1/Math.max(0.01,p1+p2));r.dnb2=od(p2/Math.max(0.01,p1+p2));}return r;}}catch(e){}return o;};})();
+
+// ===== v14.7: Sportovní ředitel (smyšlená postava) =====
+const SD_SK={sc:['Skautská síť','🔭'],ng:['Vyjednávání','🤝'],ct:['Smlouvy','📝'],ju:['Úsudek','🧠']};
+const SD_NEED={G:1,D:4,M:4,F:2};
+const SD_GW={G:['Brankář je tvoje nejslabší místo','jednička má jen','Brankáře by bylo dobré posílit','brankáře','brankář'],D:['Obrana je tvoje nejslabší místo','nejslabší obránce v základu má','Obranu by bylo dobré posílit','obránce','obránce'],
+ M:['Záloha je tvoje nejslabší místo','nejslabší záložník v základu má','Zálohu by bylo dobré posílit','záložníka','záložník'],F:['Útok je tvoje nejslabší místo','nejslabší útočník v základu má','Útok by bylo dobré posílit','útočníka','útočník']};
+function sdHr(s){let h=hashStr('sd|'+s);return ()=>{h=Math.imul(h^(h>>>15),2246822507)>>>0;h=(h^(h>>>13))>>>0;return (h%100000)/100000;};}
+function sdGen(seed,lvl){const me=myClub();const pool=OWN_FN[rfPool(me.lg)]||OWN_FN.x;const r=sdHr(seed);let fn=pool[0][Math.floor(r()*pool[0].length)],ln=pool[1][Math.floor(r()*pool[1].length)];const cn=S.own&&S.own.coach?S.own.coach.n:'';for(let t=0;t<6&&(fn+' '+ln===cn||cn.endsWith(' '+ln));t++){fn=pool[0][Math.floor(r()*pool[0].length)];ln=pool[1][Math.floor(r()*pool[1].length)];}
+ const mu=6+((me.rep||60)-50)*0.18+(lvl||0);const sk={};for(const k in SD_SK)sk[k]=clamp(Math.round(mu+(r()-0.5)*7),3,20);const age=36+Math.floor(r()*26);
+ const d={n:fn+' '+ln,age,sk,cy:S.season+1+Math.floor(r()*3),s0:S.season,rc:62,ro:62};d.wage=sdWageOf(d);return d;}
+function sdAvg(d){return (d.sk.sc+d.sk.ng+d.sk.ct+d.sk.ju)/4;}
+function sdWageOf(d){return Math.round(tvW()*0.012*Math.pow(sdAvg(d)/12,1.6)/100)*100;}
+function sdS(){if(!S)return null;if(!S.sd){S.sd={d:null,ov:0,log:[],sug:null,deal:null,dl:null,rep:null,fired:0};const own=typeof ownMode==='function'&&ownMode();
+  S.sd.d=sdGen(S.clubId+'|'+S.season+'|start',own?-1:0);}
+ return S.sd;}
+function sdD(){const s=sdS();return s&&s.d;}
+function sdOwn(){return typeof ownMode==='function'&&ownMode();}
+function sdRelK(){return sdOwn()?'ro':'rc';}
+function sdRel(dv,k){const d=sdD();if(!d)return;k=k||sdRelK();d[k]=clamp(Math.round(d[k]+dv),0,100);}
+function sdRelTxt(v){return v>=80?'výborný':v>=62?'dobrý':v>=45?'korektní':v>=30?'napjatý':'špatný';}
+function sdNm(){const d=sdD();return d?d.n:'';}
+function sdNews(ic,t,minor){if(sdOwn()&&typeof ownNews==='function')ownNews(ic,t);else addNews(ic,t,minor);}
+// ----- analýza kádru -----
+function sdNeeds(){const ps=clubPlayers(S.clubId).filter(p=>!p.loan);const top=ps.slice().sort((a,b)=>b.ovr-a.ovr).slice(0,11);const ta=top.reduce((s,p)=>s+p.ovr,0)/Math.max(1,top.length);
+ return Object.keys(SD_NEED).map(g=>{const arr=ps.filter(p=>GRP(p.pos)===g).sort((a,b)=>b.ovr-a.ovr);const n=SD_NEED[g];const st=arr.slice(0,n);const worst=st.length>=n?st[n-1].ovr:40;const avg=st.length?st.reduce((s,p)=>s+p.ovr,0)/st.length:40;
+  const depth=arr.length;return {g,worst,avg,depth,score:(avg-ta)-(depth<n+1?4:0)-(depth<n?8:0)};}).sort((a,b)=>a.score-b.score);}
+function sdBudget(){const me=myClub();if(sdOwn()&&typeof ownTbLeft==='function')return Math.max(0,Math.min(ownTbLeft(),me.money));return Math.max(0,me.money*0.8);}
+function sdWill(p){const me=myClub();const sellerRep=S.clubs[p.cl].rep;const myRep=me.rep||teamStrength(S.clubId).ovr;let will=0.85-Math.max(0,(p.ovr-myRep)-3)*0.09-Math.max(0,sellerRep-myRep-2)*0.05;if(ageOf(p)>=31)will+=0.1;will+=((S.v4&&S.v4.mrep||50)-50)/250;return clamp(will,0.03,0.97);}
+function sdCands(){const d=sdD();if(!d)return [];const s=sdS();const key=S.season+'|'+S.round+'|'+(UI.sdG||'a')+'|'+myClub().pl.length;if(s.sug&&s.sug.k===key)return s.sug.l.filter(x=>P(x.id)&&P(x.id).cl!==S.clubId);
+ const needs=sdNeeds();const gs=UI.sdG&&UI.sdG!=='a'?needs.filter(x=>x.g===UI.sdG):needs.slice(0,2);const bud=sdBudget();const me=myClub();const myLg=me.lg;const myRep=me.rep||60;const r=sdHr(key);
+ const wc=sdOwn()&&S.own?S.own.wc:Infinity;const out=[];const scE=Math.min(20,d.sk.sc+(typeof stLv==='function'?stLv('sc'):0)*2);
+ for(const nd of gs){const list=[];for(const id in S.players){const p=S.players[id];if(!p.cl||p.cl===S.clubId||p.loan||p.inj>2)continue;const c=S.clubs[p.cl];if(!c||c.tmp||GRP(p.pos)!==nd.g)continue;
+   if(scE<8&&c.lg!==myLg)continue;if(p.ovr<nd.worst+2||p.ovr>myRep+8)continue;const v=playerValue(p);const key=p.ovr>=(c.rep||60)+2?1:0;const est=v*(1.27-d.sk.ng*0.016+key*0.12)+v*0.05;if(est>bud||playerWage(p)>wc)continue;if((c.pl||[]).length<=19)continue;const a=ageOf(p);if(a>=33)continue;
+   const sc=(p.ovr-nd.worst)*2+(a<=23?Math.max(0,p.pot-p.ovr)*0.3:0)-(a>=31?3:0)-v/Math.max(1,bud)*4+(r()-0.5)*(21-scE)*0.7;list.push({p,sc});}
+  list.sort((a,b)=>b.sc-a.sc);list.slice(0,gs.length>1?2:3).forEach(x=>out.push({id:x.p.id,why:sdWhy(x.p,nd,nd===needs[0])}));}
+ s.sug={k:key,l:out.slice(0,3)};return s.sug.l;}
+function sdWhy(p,nd,weak){const W=SD_GW[nd.g];const a=ageOf(p);let t=weak?`${W[0]}: ${W[1]} ${nd.worst}. ${pSurname(p)} (${p.ovr}) by hrál hned.`:`${W[2]}. ${pSurname(p)} (${p.ovr}) je lepší než tvůj nejslabší ${W[4]} v základu (${nd.worst}).`;
+ if(nd.depth<SD_NEED[nd.g]+1)t+=` Na tuhle pozici máš jen ${nd.depth} ${czPlural(nd.depth,'hráče','hráče','hráčů')}.`;if(a<=23&&p.pot>=p.ovr+5)t+=` Je mu ${a} a může ještě hodně vyrůst.`;else if(a>=30)t+=` Zkušený hráč, ale dlouho už hodnotu neudrží.`;return t;}
+// ----- vyjednávání -----
+function sdDealCalc(id){const p=P(id);const d=sdD();if(!p||!d)return null;const c=S.clubs[p.cl];if(!c||c.tmp)return null;const r=sdHr(id+'|'+S.season+'|'+S.round);const v=playerValue(p);const key=p.ovr>=(c.rep||60)+2?1:0;
+ const ask=Math.round(v*(1.3+key*0.12)/1e4)*1e4||v;const f=clamp(1.22-d.sk.ng*0.016+key*0.12+(r()-0.5)*0.08,0.85,1.5);const fee=Math.min(ask,Math.round(v*f/1e4)*1e4||Math.round(v*f));
+ const w0=playerWage(Object.assign({},p,{wm:1}));const wage=Math.round(w0*(1.06-d.sk.ct*0.008)/100)*100;const a=ageOf(p);const yrs=a<=24?4:a<=29?3:2;const rcl=Math.round(v*(1.5+d.sk.ct*0.06)/1e5)*1e5;
+ const agent=Math.round(v*0.05*(1.25-d.sk.ct*0.02)/1e3)*1e3;const no=(c.pl||[]).length<=19?'club':r()>sdWill(p)?'player':null;return {id,fee,ask,wage,w0,yrs,rcl,agent,no,v};}
+function sdDealSheet(id,dl){const p=P(id);const d=sdD();if(!p||!d)return;if(typeof tbOn==='function'&&tbOn()){tbMsg();return;}if(!transferWindow()){toast('Přestupové okno je zavřené.');return;}
+ const x=sdDealCalc(id);if(!x){toast('O tohoto hráče teď jednat nejde.');return;}const c=S.clubs[p.cl];
+ if(x.no){modal(`<div class="c"><div style="font-size:42px">${x.no==='club'?'🙅':'🤷'}</div><h2>Nevyšlo to</h2><div class="small">Sportovní ředitel ${esc(d.n)}: ${x.no==='club'?`„${esc(c.n)} hráče ${esc(czGen(p.n))} neprodá, mají úzký kádr.“`:`„Klub by ho pustil, ale ${esc(p.n)} k nám nechce. Láká ho silnější klub.“`}</div></div><button class="btn big" style="margin-top:12px" onclick="closeModal()">Rozumím</button>`);return;}
+ S.sd.deal=Object.assign({r:S.round,s:S.season,dl:dl?1:0},x);const me=myClub();const tot=x.fee+x.agent;const okM=tot<=me.money;
+ const row=(a,b)=>`<div class="row small" style="padding:3px 0"><span style="flex:1">${a}</span><b>${b}</b></div>`;
+ modal(`<h2>🧭 ${esc(p.n)}</h2><div class="small mut" style="margin-bottom:8px">${esc(c.n)} · ${ageOf(p)} let · ${POS_FULL[p.pos]} · síla ${p.ovr}</div>
+ <div class="card" style="padding:10px 12px"><div class="small" style="margin-bottom:4px">Sportovní ředitel <b>${esc(d.n)}</b> vyjednal:</div>
+ ${row('Přestupová částka',fmtMoney(x.fee))}${x.ask>x.fee?`<div class="tiny good" style="margin:-2px 0 4px">Klub nejdřív chtěl ${fmtMoney(x.ask)}, ušetřil ${fmtMoney(x.ask-x.fee)}.</div>`:''}
+ ${row('Mzda hráče',fmtMoney(x.wage)+' týdně')}${x.w0>x.wage?`<div class="tiny good" style="margin:-2px 0 4px">Agent chtěl ${fmtMoney(x.w0)}.</div>`:''}
+ ${row('Smlouva',x.yrs+' '+czPlural(x.yrs,'rok','roky','let')+' (do '+seasonLabel(S.season+x.yrs)+')')}${row('Výkupní klauzule',fmtMoney(x.rcl))}${row('Odměna agentovi',fmtMoney(x.agent))}</div>
+ <div class="tiny mut" style="margin-bottom:8px">Tržní hodnota ${fmtMoney(x.v)} · peníze klubu ${fmtMoney(me.money)}${sdOwn()&&S.own?` · přestupový rozpočet ${fmtMoney(ownTbLeft())}`:''}. Čím vyšší klauzule, tím hůř ti hráče někdo vyplatí.</div>
+ <button class="btn big gold" ${okM?'':'disabled'} onclick="sdSign()">${okM?'✍️ Podepsat':'Na to klub nemá peníze'}</button><div style="height:8px"></div><button class="btn ghost w100" onclick="closeModal()">Nechat být</button>`);}
+function sdSign(){const s=sdS();const x=s.deal;const d=sdD();if(!x||!d||x.r!==S.round||x.s!==S.season){toast('Nabídka už neplatí.');closeModal();return;}const p=P(x.id);const me=myClub();if(!p||p.cl===S.clubId||!S.clubs[p.cl]){closeModal();return;}
+ if(typeof tbOn==='function'&&tbOn()){tbMsg();return;}if(!transferWindow()){toast('Přestupové okno je zavřené.');return;}if(clubPlayers(S.clubId).length>=36){toast('Kádr je plný (max. 36 hráčů).');return;}
+ if(x.fee+x.agent>me.money){toast('Na tuto nabídku nemáš peníze.');return;}
+ if(sdOwn()&&S.own){const o=S.own;if(o.tban===S.season&&S.round<Math.floor(S.maxRound/2)){toast('Klub má od svazu zákaz přestupů.');return;}if(x.fee>ownTbLeft()){toast(`Překračuje to přestupový rozpočet (zbývá ${fmtMoney(ownTbLeft())}).`);return;}if(!S.inf&&x.wage>o.wc){toast(`Hráč chce víc, než je mzdový strop (${fmtMoney(o.wc)}).`);return;}}
+ const from=S.clubs[p.cl];money(-x.fee,'tr_out','Nákup: '+p.n);if(x.agent)money(-x.agent,'other','Odměna agentovi: '+p.n);from.money+=x.fee;movePlayer(p,S.clubId);
+ p.mor=80;p.cy=S.season+x.yrs;p.wm=1;p.wm=Math.max(0.5,x.wage/Math.max(1,playerWage(p)));p.hap=74;p.rcl=x.rcl;s.deal=null;if(s.dl&&s.dl.p===p.id)s.dl=null;s.sug=null;
+ {const sq=clubPlayers(S.clubId).filter(q=>q.id!==p.id).sort((a,b)=>b.ovr-a.ovr);if(sq.length<3||p.ovr>=sq[2].ovr)fansAdd(3);}
+ addNews('✍️',`Posila! ${p.n} podepsal smlouvu do ${seasonLabel(p.cy)}, přestup za ${fmtMoney(x.fee)} vyjednal sportovní ředitel ${d.n}.`);
+ if(sdOwn()){sdRel(2,'ro');if(ownOnly()&&S.own.coach&&RNG()<0.25){S.own.coach.pat=clamp(S.own.coach.pat-3,0,100);sdRel(-6,'rc');ownNews('🗣️',`Trenér ${S.own.coach.n}: „${pSurname(p)} je přání sportovního ředitele, ne moje.“ Vztah trenéra s ředitelem ochladl.`);}else sdRel(2,'rc');}else sdRel(3,'rc');
+ saveGame();closeModal();render();modal(`<div class="c"><div style="font-size:46px">✍️</div><h2>Přestup dokončen</h2><div class="small">${esc(p.n)} je novou posilou týmu. Mzda ${fmtMoney(playerWage(p))} týdně, výkupní klauzule ${fmtMoney(p.rcl)}.</div></div><div style="height:12px"></div><div class="grid2"><button class="btn ghost" onclick="closeModal()">Zavřít</button><button class="btn" onclick="closeModal();go('tac')">Do sestavy</button></div>`);}
+// ----- schvalování přestupů -----
+function sdJudge(p,fee){const d=sdD();if(!d||!p)return null;const v=playerValue(p);const why=[];const me=myClub();const g=GRP(p.pos);const nd=sdNeeds().find(x=>x.g===g);const a=ageOf(p);
+ const mx=Math.max(1,...clubPlayers(S.clubId).map(q=>playerWage(q)));
+ if(fee>v*1.3)why.push(`přeplácíš o ${Math.round((fee/v-1)*100)} % nad tržní hodnotu`);
+ if(a>=31&&fee>=v*0.8&&v>=me.money*0.15)why.push(`je mu ${a}, za dva roky ho neprodáme`);
+ if(nd&&p.ovr<nd.worst-1&&nd.depth>=SD_NEED[g]+2)why.push(`${GRP_CZ[g].toLowerCase()} máme dost a lepší, do základu by se nedostal`);
+ if(playerWage(p)>mx*1.35)why.push('rozbil by mzdovou strukturu v kabině');
+ if(fee>me.money*0.7&&fee>=2e5)why.push('vyčerpá skoro celý rozpočet');
+ if(!why.length&&sdHr(p.id+'|j|'+S.season+'|'+S.round)()<(20-d.sk.ju)/60)why.push('na videu mě nepřesvědčil');
+ return why;}
+function sdBlockModal(id,fee,why,go2){const d=sdD();const p=id.startsWith('t_')?MK.tmp[id]:P(id);const k=sdRelK();const cost=k==='ro'?6:10;
+ modal(`<div class="c"><div style="font-size:42px">✋</div><h2>Ředitel nesouhlasí</h2></div><div class="small" style="line-height:1.5">Sportovní ředitel <b>${esc(d.n)}</b> ${sdOwn()?'je proti':'přestup blokuje'}: „${esc(p?p.n:'Hráč')} za ${fmtMoney(fee)}? ${why.map(w=>w[0].toUpperCase()+w.slice(1)).join('. ')}.“</div>
+ <div class="tiny mut" style="margin:8px 0">Vztah s ředitelem: ${sdRelTxt(d[k])} (${d[k]}/100). Když ho přetlačíš, zhorší se zhruba o ${cost}.</div>
+ <button class="btn big red" onclick="sdOverride('${id}',${fee})">${sdOwn()?'Trvat na svém':'Přetlačit ředitele'}</button><div style="height:8px"></div><button class="btn ghost w100" onclick="sdBackDown()">Ustoupit</button>`);}
+function sdOverride(id,fee){const d=sdD();const k=sdRelK();sdRel(k==='ro'?-6:-10);S.sd.ov=(S.sd.ov||0)+1;const p=id.startsWith('t_')?MK.tmp[id]:P(id);
+ if(sdOwn())sdNews('🧭',`Majitel přetlačil sportovního ředitele ${czGen(d.n)} u přestupu (${p?p.n:''}). ${d.n}: „Je to vaše rozhodnutí, ale já za ním nestojím.“`);
+ else{addNews('🧭',`Přetlačil jsi sportovního ředitele ${czGen(d.n)} u přestupu (${p?p.n:''}). ${d.n}: „Ať je to na zodpovědnost trenéra.“`);if(d.rc<25){S.boardTrust=clamp((S.boardTrust||50)-3,0,100);addNews('👔','Vedení klubu se nelíbí, že se trenér přetahuje se sportovním ředitelem. Důvěra vedení klesla.',1);}}
+ closeModal();UI._sdOk=1;try{makeBid(id,fee);}finally{UI._sdOk=0;}sdQuit();}
+function sdBackDown(){sdRel(1);closeModal();toast('Přestup jsi stáhl.');saveGame();}
+function sdQuit(){const d=sdD();if(!d)return;if(sdOwn()&&d.ro<15){S.sd.d=null;S.sd.sug=null;sdNews('🚪',`Sportovní ředitel ${d.n} podal výpověď: „S majitelem, který mě přehlasuje u každého přestupu, pracovat nejde.“`);saveGame();}}
+// ----- prodloužení smluv -----
+function sdRenewEval(p){const sq=clubPlayers(S.clubId).sort((a,b)=>b.ovr-a.ovr);const rk=sq.indexOf(p);const a=ageOf(p);return rk<18||a<=24&&p.pot>=p.ovr+4?(a>=33&&rk>=11?'old':'yes'):'no';}
+function sdRenew(id){const p=v4ctr(P(id));const d=sdD();if(!p||!d||p.cl!==S.clubId)return;if(typeof tbOn==='function'&&tbOn()){tbMsg();return;}const dm=ctrDemand(p);
+ const att=p.ctrTry&&p.ctrTry.r===S.round?p.ctrTry.n:0;if(att>=3){toast('Agent hráče dnes další jednání odmítl.');return;}
+ const k=clamp(1-(d.sk.ct-5)*0.008,0.86,1.02);const agent=Math.round(dm.agent*(1.15-d.sk.ct*0.015)/1e3)*1e3;const me=myClub();if(me.money<agent){toast('Klub nemá na odměnu agentovi.');return;}
+ const ch=clamp(0.55+d.sk.ct*0.02+((p.hap||60)-60)/100,0.3,0.97);closeModal();
+ if(RNG()<ch){p.cy=p.cy+dm.yrs;const nw=Math.round(dm.w*k/100)*100;p.wm=Math.max(0.5,nw/Math.max(1,baseWage(p)));money(-agent,'other','Odměna agentovi: '+p.n);p.hap=clamp((p.hap||60)+6,0,100);p.ctrWarn=0;
+  p.rcl=Math.round(playerValue(p)*(1.5+d.sk.ct*0.06)/1e5)*1e5;sdRel(1);
+  addNews('📝',`${p.n} prodloužil smlouvu do ${seasonLabel(p.cy)}, mzda ${fmtMoney(playerWage(p))} týdně. Vyjednal sportovní ředitel ${d.n}.`);saveGame();render();
+  modal(`<div class="c"><div style="font-size:44px">🤝</div><h2>Podepsáno</h2><div class="small">${esc(d.n)}: „${esc(pSurname(p))} zůstává do ${seasonLabel(p.cy)}. Agent chtěl ${fmtMoney(dm.w)} týdně, dohodli jsme ${fmtMoney(nw)}.“</div></div><button class="btn big" style="margin-top:12px" onclick="closeModal()">Super</button>`);}
+ else{p.ctrTry={r:S.round,n:att+1};p.hap=clamp((p.hap||60)-3,0,100);saveGame();render();
+  modal(`<div class="c"><div style="font-size:44px">😤</div><h2>Zatím bez dohody</h2><div class="small">${esc(d.n)}: „Agent hráče ${esc(czGen(p.n))} chce víc, než jsme ochotní dát. Zkusím to znovu.“</div></div><button class="btn big" style="margin-top:12px" onclick="closeModal()">Rozumím</button>`);}}
+// ----- karty -----
+function sdSkills(d){return Object.keys(SD_SK).map(k=>`<div class="row tiny" style="gap:8px;padding:2px 0"><span style="width:120px">${SD_SK[k][1]} ${SD_SK[k][0]}</span><div class="bar" style="flex:1"><i style="width:${d.sk[k]*5}%"></i></div><b style="width:22px;text-align:right">${d.sk[k]}</b></div>`).join('');}
+function sdProfile(d){const own=sdOwn();const row=(a,b,c)=>`<div class="row small" style="padding:3px 0"><span style="flex:1">${a}</span><b class="${c||''}">${b}</b></div>`;const rc=v=>v<30?'bad':v>=62?'good':'';
+ return `<div class="small mut" style="margin-bottom:6px">${d.age} let · mzda ${fmtMoney(d.wage)} týdně · smlouva do ${seasonLabel(d.cy)}</div>${sdSkills(d)}
+ ${row(own&&ownOnly()?'Vztah s trenérem':'Vztah s tebou (trenér)',sdRelTxt(d.rc)+' · '+d.rc,rc(d.rc))}${own?row('Vztah s majitelem',sdRelTxt(d.ro)+' · '+d.ro,rc(d.ro)):row('Vztah s vedením klubu',sdRelTxt(d.ro)+' · '+d.ro,rc(d.ro))}`;}
+function sdCardHtml(){const s=sdS();const d=s.d;if(!d)return `<div class="card"><h3>🧭 Sportovní ředitel</h3><div class="small">Klub teď nemá sportovního ředitele.${sdOwn()?' Najmi ho v Kanceláři majitele.':' Vedení hledá nového.'}</div>${sdOwn()?`<button class="btn ghost w100" style="margin-top:8px" onclick="UI.ownTab='dir';go('own')">Do kanceláře</button>`:''}</div>`;
+ return `<div class="card"><h3>🧭 Sportovní ředitel ${esc(d.n)}</h3>${sdProfile(d)}<div class="tiny mut" style="margin-top:6px">${sdOwn()?'Najímáš ho a propouštíš ty jako majitel.':'Najímá ho a propouští vedení klubu. Schvaluje tvoje přestupy, ale můžeš ho přetlačit.'}</div>${sdOwn()?`<button class="btn ghost w100" style="margin-top:8px" onclick="UI.ownTab='dir';go('own')">Spravovat v kanceláři</button>`:''}</div>`;}
+function sdMarketHtml(){const d=sdD();if(!d)return sdCardHtml();const win=transferWindow();const L=sdCands();const bud=sdBudget();
+ let h=`<div class="card"><h3>🧭 Ředitel ${esc(d.n)} doporučuje</h3><div class="chips" style="margin-bottom:6px">${[['a','Co chybí'],['G','Brankář'],['D','Obrana'],['M','Záloha'],['F','Útok']].map(([k,l])=>`<button class="chip ${(UI.sdG||'a')===k?'on':''}" onclick="UI.sdG='${k}';render()">${l}</button>`).join('')}</div>`;
+ h+=L.length?L.map(x=>{const p=P(x.id);const c=S.clubs[p.cl];return `<div style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,.06)"><div class="pl-row" style="padding:0" onclick="playerSheet('${p.id}')">${posB(p.pos)}<div class="nm"><b>${flag(p.nat)} ${esc(p.n)}</b><small>${ageOf(p)} let · ${esc(c.n)} · ${fmtMoney(playerValue(p))}</small></div>${ovrB(p.ovr)}</div>
+  <div class="tiny mut" style="margin:4px 0 6px">${esc(x.why)}</div><button class="btn ghost w100" ${win?'':'disabled'} onclick="sdDealSheet('${p.id}')">${win?'🤝 Ať vyjedná přestup':'Jednat lze až v přestupovém okně'}</button></div>`;}).join(''):`<div class="small mut">${bud<2e5?'Na posilu teď nejsou peníze. Zkus prodat hráče, které nepotřebuješ.':'Ředitel teď nenašel nikoho, kdo by kádr opravdu posílil a vešel se do rozpočtu.'}</div>`;
+ const exp=clubPlayers(S.clubId).filter(p=>{v4ctr(p);return p.cy<S.season+1&&!p.loan;});
+ if(exp.length)h+=`<div class="small" style="margin-top:10px"><b>📝 Končící smlouvy</b></div>${exp.slice(0,6).map(p=>{const e=sdRenewEval(p);return `<div class="row small" style="padding:4px 0;gap:8px"><span style="flex:1;min-width:0">${esc(p.n)} <span class="tiny ${e==='yes'?'good':'mut'}">${e==='yes'?'· prodloužit':e==='old'?'· jen na rok':'· nechat odejít'}</span></span><button class="btn ghost sm" onclick="sdRenew('${p.id}')">Jednat</button></div>`;}).join('')}`;
+ return h+`<div class="tiny mut" style="margin-top:8px">Rozpočet na přestupy: ${fmtMoney(bud)}. Lepší skautská síť (a skautské oddělení) najde lepší hráče, lepší vyjednávání ušetří peníze.</div></div>`;}
+function sdOwnerHtml(){const s=sdS();const d=s.d;const o=S.own;let h='';
+ if(d){const left=Math.max(0,(d.cy-S.season)*(S.maxRound||30)+((S.maxRound||30)-S.round));const comp=Math.round(Math.min(30,left)*d.wage/1e3)*1e3;
+  h+=`<div class="card"><h3>🧭 Sportovní ředitel ${esc(d.n)}</h3>${sdProfile(d)}${s.rep?`<div class="card" style="padding:8px 10px;margin:8px 0 0"><div class="tiny mut">Poslední zpráva (${s.rep.r}. týden)</div><div class="small">${esc(s.rep.t)}</div></div>`:''}
+  ${d.cy<=S.season?`<button class="btn gold w100" style="margin-top:8px" onclick="sdExtend()">Prodloužit smlouvu o 2 roky (mzda ${fmtMoney(Math.round(d.wage*1.1/100)*100)})</button>`:''}
+  <button class="btn red w100" style="margin-top:8px" onclick="if(confirm('Odvolat ředitele? Odstupné ${fmtMoney(comp)}.'))sdFire()">Odvolat ředitele (odstupné ${fmtMoney(comp)})</button></div>`;}
+ else h+=`<div class="card" style="border-color:var(--bad)"><h3>🧭 Klub nemá sportovního ředitele</h3><div class="small">Bez něj ti nikdo nehledá posily, nevyjednává ceny ani smlouvy. Vyber si z kandidátů.</div></div>`;
+ if(!d||UI.sdPool){h+=`<div class="card"><h3>📋 Kandidáti</h3>${sdPool().map((x,i)=>`<div style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05)"><div class="row small" style="gap:8px"><span style="flex:1"><b>${esc(x.n)}</b><div class="tiny mut">${x.age} let · ${fmtMoney(x.wage)} týdně · podpis ${fmtMoney(x.wage*4)}</div></div><button class="btn sm" ${x.no?'disabled':''} onclick="sdHire(${i})">${x.no?'Odmítl':'Najmout'}</button></div>${sdSkills(x)}</div>`).join('')}</div>`;}
+ else h+=`<button class="btn ghost w100" style="margin-bottom:10px" onclick="UI.sdPool=1;render()">Ukázat jiné kandidáty</button>`;
+ return h;}
+function sdPool(){const s=sdS();if(!s.pool||s.pool.s!==S.season||s.pool.r!==S.round){s.pool={s:S.season,r:S.round,c:[-3,0,2,5].map((l,i)=>sdGen(S.clubId+'|'+S.season+'|'+S.round+'|'+i+'|'+(s.fired||0),l))};}return s.pool.c;}
+function sdHire(i){const s=sdS();const c=sdPool()[i];if(!c||c.no)return;const me=myClub();const mu=6+((me.rep||60)-50)*0.18;if(sdAvg(c)>mu+3&&RNG()<0.45){c.no=1;toast(`${c.n} nabídku odmítl. Klub je pro něj málo atraktivní.`);saveGame();render();return;}
+ const fee=c.wage*4;if(me.money<fee){toast('Klub na to nemá peníze.');return;}if(s.d){toast('Nejdřív odvolej současného ředitele.');return;}money(-fee,'other','Sportovní ředitel: podpisový bonus');
+ s.d=Object.assign({},c,{s0:S.season,cy:S.season+2,rc:60,ro:66});s.pool.c.splice(i,1);s.sug=null;UI.sdPool=0;sdNews('🧭',`Novým sportovním ředitelem klubu ${me.n} je ${c.n}. Smlouva do ${seasonLabel(S.season+2)}.`);saveGame();render();}
+function sdFire(){const s=sdS();const d=s.d;if(!d)return;const left=Math.max(0,(d.cy-S.season)*(S.maxRound||30)+((S.maxRound||30)-S.round));const comp=Math.round(Math.min(30,left)*d.wage/1e3)*1e3;
+ money(-comp,'wages','Odstupné pro sportovního ředitele');s.d=null;s.sug=null;s.fired=(s.fired||0)+1;if(typeof ownRepAdd==='function')ownRepAdd(-1);sdNews('🚪',`Odvolal jsi sportovního ředitele ${czGen(d.n)}. Odstupné ${fmtMoney(comp)}.`);saveGame();render();}
+function sdExtend(){const d=sdD();if(!d)return;d.cy=S.season+2;d.wage=Math.round(d.wage*1.1/100)*100;sdRel(4,'ro');sdNews('🧭',`Sportovní ředitel ${d.n} prodloužil smlouvu do ${seasonLabel(d.cy)}.`);saveGame();render();}
+// ----- týden, uzávěrka, sezóna -----
+function sdReport(){const d=sdD();if(!d)return;const nd=sdNeeds()[0];const exp=clubPlayers(S.clubId).filter(p=>p.cy<S.season+1&&!p.loan).length;const bud=sdBudget();const L=sdCands();
+ const t=`${GRP_CZ[nd.g]} potřebují posílit (nejslabší v základu ${nd.worst}). Končící smlouvy: ${exp}. Na přestupy zbývá ${fmtMoney(bud)}.${L[0]?` Doporučuji přestup: ${P(L[0].id).n} (${S.clubs[P(L[0].id).cl].n}).`:''}${d.rc<35?' Se trenérem si nerozumíme.':''}`;
+ S.sd.rep={r:S.round,t};sdNews('🧭',`Zpráva sportovního ředitele ${czGen(d.n)}: ${t}`);}
+function sdWeek(){const s=sdS();const d=s.d;if(!d)return;money(-d.wage,'wages','Sportovní ředitel');
+ if(sdOwn()&&S.round%5===2)sdReport();
+ // prodej přebytečných hráčů přes existující nabídky
+ if(transferWindow()&&!seasonOver()&&!S.offers.some(o=>o.sd)&&RNG()<0.3){const sq=clubPlayers(S.clubId).filter(p=>!p.loan&&p.inj<=0).sort((a,b)=>b.ovr-a.ovr);
+  if(sq.length>22){const pool=sq.slice(18).filter(p=>!S.offers.some(o=>o.p===p.id));const p=pool.length?wpick(pool,x=>(ageOf(x)>=29?2:1)*playerWage(x)):null;
+   if(p){const others=Object.keys(S.clubs).filter(id=>id!==S.clubId&&!S.clubs[id].tmp&&S.clubs[id].rep>=p.ovr-8&&S.clubs[id].rep<=p.ovr+6&&clubPlayers(id).length<30);const buyer=others.length?pick(others):null;
+    const fee=Math.max(1e4,Math.round(playerValue(p)*clamp(0.8+d.sk.ng*0.016+rnd(-0.05,0.05),0.75,1.2)/1e4)*1e4);S.offers.push({id:'o'+Date.now()+rint(0,999),p:p.id,buyer,bn:buyer?S.clubs[buyer].n:foreignClubName(p),fee,r:S.round,sd:1});
+    sdNews('🧭',`Sportovní ředitel ${d.n} našel kupce: ${p.n} se do sestavy nevejde a ${buyer?S.clubs[buyer].n:'zahraniční klub'} za něj nabízí ${fmtMoney(fee)}. Ušetříš i mzdu ${fmtMoney(playerWage(p))} týdně.`);}}}
+ // vztah ředitele s trenérem v kariéře majitele: občasné neshody
+ if(ownOnly()&&S.own.coach&&RNG()<0.05){const nd=sdNeeds()[0];sdRel(-4,'rc');ownNews('🗣️',pick([`Trenér ${S.own.coach.n} a ředitel ${d.n} se neshodnou: trenér chce ${SD_GW[nd.g][3]}, ředitel tvrdí, že na to nejsou peníze.`,`Trenér ${S.own.coach.n} si stěžuje, že mu ředitel ${d.n} nesehnal ${SD_GW[nd.g][3]}. Ředitel odpovídá, že trenér nedává šanci posilám.`]));}
+ if(!sdOwn()&&d.rc<20&&RNG()<0.08){d.ro=clamp(d.ro-5,0,100);addNews('👔',`Sportovní ředitel ${d.n} si u vedení stěžuje na trenéra. Vztahy v klubu jsou napjaté.`,1);}}
+function sdDeadline(){const s=sdS();const d=s.d;if(!d||!transferWindow())return;const half=Math.floor(S.maxRound/2);if(S.round!==3&&S.round!==half+1)return;
+ const L=sdCands();if(L.length){const p=P(L[0].id);s.dl={p:p.id,r:S.round,s:S.season,why:L[0].why};sdNews('⏰',`Den uzávěrky: sportovní ředitel ${d.n} má rozjednaný přestup: ${p.n} (${S.clubs[p.cl].n}). Rozhodni se ještě tento týden.`);}
+ const top=clubPlayers(S.clubId).sort((a,b)=>b.ovr-a.ovr).slice(0,3).map(p=>p.id);for(const o of S.offers.filter(o=>o.dl&&o.r===S.round)){const p=P(o.p);if(!p)continue;
+  sdNews('🧭',top.includes(p.id)?`Ředitel ${d.n} k nabídce na hráče (${p.n}, ${fmtMoney(o.fee)}): „Opora týmu, na poslední chvíli náhradu neseženeme. Neprodávat.“`:`Ředitel ${d.n} k nabídce na hráče (${p.n}, ${fmtMoney(o.fee)}): „${o.fee>=playerValue(p)*1.2?'Výborná cena, bral bych to.':'Cena je slušná, rozhodnutí je na vás.'}“`);}
+ // výkupní klauzule tvých hráčů
+ for(const p of clubPlayers(S.clubId)){if(!p.rcl||p.loan||p.rcl>playerValue(p)*2.1||RNG()>0.04)continue;const rich=Object.keys(S.clubs).filter(id=>id!==S.clubId&&!S.clubs[id].tmp&&S.clubs[id].money>p.rcl*1.2&&S.clubs[id].rep>=p.ovr-3);if(!rich.length)continue;
+  const b=S.clubs[pick(rich)];b.money-=p.rcl;money(p.rcl,'tr_in','Výkupní klauzule: '+p.n);movePlayer(p,b.id);fansAdd(-4);addNews('💥',`${b.n} zaplatil výkupní klauzuli ${fmtMoney(p.rcl)} a ${p.n} odchází. Klauzule byla nízká.`);break;}}
+function sdSeason(){const s=sdS();const d=s.d;if(!d)return;
+ if(d.cy<S.season){if(sdOwn()){s.d=null;sdNews('🚪',`Sportovnímu řediteli ${d.n} skončila smlouva a z klubu odešel. Najmi nového v Kanceláři majitele.`);return;}
+  if(RNG()<0.7&&d.ro>=35){d.cy=S.season+2;addNews('🧭',`Vedení prodloužilo smlouvu sportovnímu řediteli ${d.n} do ${seasonLabel(d.cy)}.`,1);}else{sdBoardReplace(`${d.n} po skončení smlouvy v klubu končí.`);return;}}
+ if(!sdOwn()){if(d.rc<15&&RNG()<0.5){sdBoardReplace(`Vedení ustoupilo trenérovi a sportovního ředitele ${czGen(d.n)} odvolalo.`);return;}if(d.rc<15){S.boardTrust=clamp((S.boardTrust||50)-5,0,100);addNews('👔',`Vedení podržel sportovního ředitele ${czGen(d.n)}. Trenérovi vzkazuje, ať se spolu domluví.`);}
+  if(S.season-d.s0>=2&&RNG()<0.08)sdBoardReplace(`Vedení klubu se rozhodlo pro změnu na postu sportovního ředitele, ${d.n} končí.`);}}
+function sdBoardReplace(why){const s=sdS();s.d=sdGen(S.clubId+'|'+S.season+'|b|'+((s.fired||0)+1),0);s.fired=(s.fired||0)+1;s.sug=null;addNews('🧭',`${why} Novým sportovním ředitelem je ${s.d.n}.`);}
+// ----- napojení -----
+(function(){
+ const _rm=renderMarket;renderMarket=function(){let h=_rm.apply(this,arguments);try{const m='<div class="card"><h3>Hledat hráče</h3>';const add=sdMarketHtml();h=h.includes(m)?h.replace(m,add+m):h+add;}catch(e){console.warn(e);}return h;};
+ const _rf=renderFacilities;renderFacilities=function(){let h=_rf.apply(this,arguments);try{h=h.replace('<div class="card"><h3>👥 Realizační tým</h3>',sdCardHtml()+'<div class="card"><h3>👥 Realizační tým</h3>');}catch(e){}return h;};
+ const _ro=renderOwner;renderOwner=function(){let h=_ro.apply(this,arguments);try{if(!sdOwn())return h;h=h.replace(/(<button class="[^"]*" onclick="UI\.ownTab='biz';render\(\)">)/,`<button class="${UI.ownTab==='dir'?'on':''}" onclick="UI.ownTab='dir';render()">Ředitel</button>$1`);if(UI.ownTab==='dir')h+=sdOwnerHtml();}catch(e){console.warn(e);}return h;};
+ const _hc=v4HomeCards;v4HomeCards=function(){let h=_hc.apply(this,arguments);try{const s=sdS();const d=s&&s.d;if(d&&s.dl&&s.dl.s===S.season&&s.dl.r===S.round&&transferWindow()){const p=P(s.dl.p);if(p&&p.cl!==S.clubId)h=`<div class="card" style="border-color:var(--gold)"><h3>⏰ Ředitel: přestup na poslední chvíli</h3><div class="small"><b>${esc(p.n)}</b> (${esc(S.clubs[p.cl].n)}, ${ageOf(p)} let, síla ${p.ovr}). ${esc(s.dl.why)}</div><div class="grid2" style="margin-top:8px"><button class="btn ghost" onclick="S.sd.dl=null;saveGame();render()">Nechat být</button><button class="btn gold" onclick="sdDealSheet('${p.id}',1)">Vyjednat</button></div></div>`+h;}}catch(e){console.warn(e);}return h;};
+ const _wk=v4Week;v4Week=function(){const r=_wk.apply(this,arguments);try{sdWeek();}catch(e){console.warn(e);}return r;};
+ const _dw=deadlineWeek;deadlineWeek=function(){const r=_dw.apply(this,arguments);try{sdDeadline();}catch(e){console.warn(e);}return r;};
+ const _ss=startSeason;startSeason=function(){const r=_ss.apply(this,arguments);try{if(S&&S.sd)sdSeason();}catch(e){console.warn(e);}return r;};
+ const _or=offerRow;offerRow=function(o){let h=_or.apply(this,arguments);try{if(o&&o.sd&&h)h=h.replace('<small>','<small>🧭 našel ředitel · ');}catch(e){}return h;};
+ const _ao=acceptOffer;acceptOffer=function(oid){const o=S.offers.find(x=>x.id===oid);const r=_ao.apply(this,arguments);try{if(o&&o.sd&&!S.offers.some(x=>x.id===oid))sdRel(2);}catch(e){}return r;};
+ const _mb=makeBid;makeBid=function(id,fee){try{const d=sdD();if(d&&!UI._sdOk&&transferWindow()&&!(typeof tbOn==='function'&&tbOn())){const p=id.startsWith('t_')?MK.tmp[id]:P(id);const why=sdJudge(p,fee);if(why&&why.length){sdBlockModal(id,fee,why);return;}
+   const n0=clubPlayers(S.clubId).length;const r=_mb.apply(this,arguments);if(clubPlayers(S.clubId).length>n0){sdRel(1);}return r;}}catch(e){console.warn(e);}return _mb.apply(this,arguments);};
+ const _mo=v4MineHtml;v4MineHtml=function(p){let h=_mo.apply(this,arguments);try{const d=sdD();const ex=p.cy<S.season+1;let add='';if(p.rcl)add+=`<div class="tiny mut" style="margin-top:6px">💥 Výkupní klauzule ${fmtMoney(p.rcl)}</div>`;
+   if(d&&ex&&!p.loan){const e=sdRenewEval(p);add+=`<div class="tiny mut" style="margin-top:6px">🧭 Ředitel: ${e==='yes'?'doporučuje prodloužit.':e==='old'?'prodloužit nanejvýš o rok.':'nechat odejít, do týmu nepatří.'}</div><button class="btn ghost w100" style="margin-top:6px" onclick="closeModal();sdRenew('${p.id}')">🧭 Ať jedná ředitel</button>`;}
+   if(add)h=h.replace(/<\/div>$/,add+'</div>');}catch(e){}return h;};
+ const _oo=v4OtherHtml;v4OtherHtml=function(p){let h=_oo.apply(this,arguments);try{const d=sdD();if(d&&h&&p.cl&&S.clubs[p.cl]&&!S.clubs[p.cl].tmp)h=h.replace(/<\/div>$/,`<button class="btn ghost w100" style="margin-top:6px" onclick="closeModal();sdDealSheet('${p.id}')">🧭 Ať jedná ředitel</button></div>`);}catch(e){}return h;};
+ const _cs=ctrSheet;ctrSheet=function(id){const r=_cs.apply(this,arguments);try{const d=sdD();const m=document.querySelector('#mbg .modal');const p=P(id);if(d&&m&&p&&p.cl===S.clubId&&!(p.ctrTry&&p.ctrTry.r===S.round&&p.ctrTry.n>=3)){const b=document.createElement('div');b.innerHTML=`<button class="btn w100" style="margin-top:8px" onclick="sdRenew('${id}')">🧭 Nechat jednat ředitele ${esc(d.n)}</button>`;m.appendChild(b);}}catch(e){}return r;};
+ const _pl=postLoad;postLoad=function(){const r=_pl.apply(this,arguments);try{sdS();}catch(e){}return r;};
+ const _ng=newGame;newGame=async function(o){const r=await _ng.apply(this,arguments);try{if(S)S.sd=null;sdS();}catch(e){}return r;};
+})();
 
 
 // ---------- boot ----------
