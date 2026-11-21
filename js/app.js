@@ -4754,6 +4754,50 @@ Object.assign(PRESS_Q,{refErrAg:['Rozhodčí dnes udělal chybu, která vás po�
 // celkový počet gólů zůstává stejný: neuznané góly a chyby rozhodčích se vyrovnají mírně nižší produktivitou
 (function(){const _rc=recalc;recalc=function(M){_rc.apply(this,arguments);try{if(M&&M.xg&&M.sides){if(M._v16va==null)M._v16va=v16HasVar(M)?1:0;const f=M._v16va?0.978:0.96;M.xg=[M.xg[0]*f,M.xg[1]*f];}}catch(x){}};})();
 
+// ===== v14.6.1: kurzy před zápasem z aktuální síly týmu, živé kurzy navazují na závěrečný kurz =====
+const V161={c:{}};
+function v161Sig(cid){let s=0;for(const p of clubPlayers(cid))s+=(p.cond||0)+(p.inj>0?1000:0)+(p.sus>0?5000:0)+(p.mor||0)*0.013+(p.ovr||0)*7;let k=S.season+'|'+Math.round(s*10);
+ if(cid===S.clubId&&S.tac)k+='|'+S.tac.form+'|'+(S.tac.xi||[]).join(',')+'|'+(S.tac.ment||'')+(S.tac.press||'')+(S.tac.style||'')+'|'+Math.round(S.cohesion||0)+(typeof ownOnly==='function'&&ownOnly()&&S.own&&S.own.coach?'|'+S.own.coach.rep:'');return k;}
+function v161Line(cid){if(!S||!S.clubs)return null;const c=S.clubs[cid];if(!c||c.tmp||!c.pl||c.pl.length<11)return null;const k=v161Sig(cid);const C=V161.c[cid];if(C&&C.k===k)return C.v;let v;
+ try{if(cid===S.clubId&&S.tac&&!(typeof ownOnly==='function'&&ownOnly())){const sd=sideSetup(cid,true);v=Object.assign({},lineStrength(sd.xi,sd.form,sd.tac));const coh=((S.cohesion||50)-50)/50*1.2;v.att+=coh;v.def+=coh;v.mid+=coh;}
+  else{v=Object.assign({},teamStrength(cid));if(cid===S.clubId&&typeof ownCoachBonus==='function'){const b=ownCoachBonus();v.att+=b;v.def+=b;v.mid+=b;}}}catch(e){return null;}
+ if(!isFinite(v.att)||!isFinite(v.def)||!isFinite(v.mid))return null;V161.c[cid]={k,v};return v;}
+(function(){const _sl=synthLine;synthLine=function(cid){if(!window.__v161off){const v=v161Line(cid);if(v)return {att:v.att,def:v.def,mid:v.mid,gk:v.gk,ovr:v.ovr};}return _sl.apply(this,arguments);};})();
+// ----- živá kotva: v 0. minutě živé kurzy 1X2 přesně odpovídají závěrečnému kurzu před zápasem -----
+function v161Target(M){const h=M.h.cid,a=M.a.cid;let o=null;try{const O=S.v14o||{};let best=null;const pref=[];try{const om=v14OwnMid();if(om&&om.h===h&&om.a===a)pref.push(om.mid);}catch(e){}if(M.code!=null&&M.r!=null)pref.push('L|'+M.code+'|'+M.r+'|'+h+'|'+a);for(const k of pref){const R=O[k];if(R&&R.h&&R.h.length){best=R;break;}}if(!best){const ks=Object.keys(O);for(let ii=ks.length-1;ii>=0;ii--){const k=ks[ii];if(k==='_lv')continue;if(!k.endsWith('|'+h+'|'+a))continue;const R=O[k];if(!R||!R.h||!R.h.length)continue;best=R;break;}}
+  if(best){const l=best.h[best.h.length-1];if(l&&l.o&&!l.e)o=l.o.slice(0,3);}M.lvMid=pref[0]||(best?Object.keys(O).find(k=>O[k]===best):null);}catch(e){}
+ try{const mo=matchOdds(h,a,M.lvMid||('k|'+h+'|'+a));if(mo&&mo['1']){o=[mo['1'],mo['X'],mo['2']];M.lvPre=mo;}}catch(e){}if(!o)return null;
+ const q=o.map(x=>1/x);const s=q[0]+q[1]+q[2];if(!(s>0))return null;const T=q.map(x=>x/s);const mo=M.lvPre;if(mo&&mo.o25&&mo.u25){T.o25=(1/mo.o25)/((1/mo.o25)+(1/mo.u25));}return T;}
+function v161Fit(M,T){const f=(kh,ka)=>{M.lvA=[kh,ka];const r=__v161lp(M);return [r['1'],r['2']];};let x=[0,0];
+ for(let it=0;it<12;it++){const p=f(Math.exp(x[0]),Math.exp(x[1]));const e=[p[0]-T[0],p[1]-T[2]];if(Math.abs(e[0])<0.0015&&Math.abs(e[1])<0.0015)break;const d=0.02;
+  const p1=f(Math.exp(x[0]+d),Math.exp(x[1])),p2=f(Math.exp(x[0]),Math.exp(x[1]+d));const J=[[(p1[0]-p[0])/d,(p2[0]-p[0])/d],[(p1[1]-p[1])/d,(p2[1]-p[1])/d]];const det=J[0][0]*J[1][1]-J[0][1]*J[1][0];if(!det)break;
+  let dx0=(J[1][1]*e[0]-J[0][1]*e[1])/det,dx1=(-J[1][0]*e[0]+J[0][0]*e[1])/det;dx0=clamp(dx0,-0.5,0.5);dx1=clamp(dx1,-0.5,0.5);x=[clamp(x[0]-dx0,-1.6,1.6),clamp(x[1]-dx1,-1.6,1.6)];}
+ return [Math.exp(x[0]),Math.exp(x[1])];}
+let __v161lp=null;
+function v161Anchor(M){if(!M||M.lvA||M.ended||!M.h||!M.a)return;if(M.min>1||M.score[0]||M.score[1]){M.lvA=[1,1];return;}const T=v161Target(M);if(!T){M.lvA=[1,1];return;}M.lvT=T;M.lvA=v161Fit(M,T);M.lvK=1;if(T.o25){let lo=-0.8,hi=0.8;M._lvG=1;for(let it=0;it<22;it++){const md=(lo+hi)/2;M.lvK=Math.exp(md);const r=__v161lp(M);const g=r.o25;if(g==null)break;if(g<T.o25)lo=md;else hi=md;}M.lvK=Math.exp((lo+hi)/2);M._lvG=0;}v161Offs(M);}
+(function(){const _lr=lvRate;lvRate=function(M,i){const r=_lr.apply(this,arguments);return M&&M.lvA&&!window.__v161off?r*M.lvA[i]*(M._lvG&&M.lvK?M.lvK:1):r;};
+ __v161lp=lvProbs;const _lp=lvProbs;lvProbs=function(M){try{if(M&&!M.lvA&&M.sides&&!window.__v161off)v161Anchor(M);}catch(e){console.warn(e);if(M)M.lvA=[1,1];}const r=_lp.apply(this,arguments);try{if(M&&M.lvA&&M.lvK&&Math.abs(M.lvK-1)>0.002&&!window.__v161off&&!M.ended){M._lvG=1;let r2;try{r2=_lp.apply(this,arguments);}finally{M._lvG=0;}for(const k in r2)if(/^[ou]\d5$|^gg$|^ng$/.test(k))r[k]=r2[k];}}catch(e){M._lvG=0;}return r;};
+ const _cm=createMatch;createMatch=function(h,a,F){const M=_cm.apply(this,arguments);try{if((M.h.user||M.a.user)&&!window.__v161off)v161Anchor(M);}catch(e){}return M;};})();
+
+// ----- kotva pro všechny trhy: rozdíl proti závěrečnému kurzu v 0. minutě, postupně slábne s ubíhajícím časem -----
+function v161Pre(M){const mo=M.lvPre;if(!mo)return null;const P={};const inv=k=>mo[k]?1/mo[k]:null;const grp=(ks,ls)=>{const q=ks.map(inv);if(q.some(x=>x==null))return;const s=q.reduce((a,b)=>a+b,0);ks.forEach((k,i)=>{P[(ls||ks)[i]]=q[i]/s;});};
+ grp(['1','X','2']);grp(['ht1','htX','ht2'],['lht1','lhtX','lht2']);for(let q=0;q<=8;q++)grp(['o'+q+'5','u'+q+'5']);grp(['gg','ng']);grp(['hm15','ap15']);grp(['am15','hp15']);grp(['adv1','adv2']);
+ let ln={};try{ln=v14LvLines(M);}catch(e){}for(const k in mo){let m=/^co(\d+)$/.exec(k);if(m&&ln.c!=null&&Math.abs(+m[1]/10-ln.c)<0.01)grp([k,'cu'+m[1]],['lco','lcu']);m=/^ko(\d+)$/.exec(k);if(m&&ln.k!=null&&Math.abs(+m[1]/10-ln.k)<0.01)grp([k,'ku'+m[1]],['lko','lku']);}
+ const ov=(inv('1')||0)+(inv('X')||0)+(inv('2')||0);if(ov>0){for(const k in mo)if(/^cs_/.test(k))P[k]=inv(k)/ov;}
+ if(P['1']!=null){P['1X']=P['1']+P['X'];P['12']=P['1']+P['2'];P['X2']=P['X']+P['2'];}
+ return P;}
+function v161Offs(M){M.lvOff=null;const P=v161Pre(M);if(!P)return;const r=lvProbs(M);let x={};try{x=v14LvX(M);}catch(e){}const off={};
+ for(const k in P){const v=r[k]!=null?r[k]:x[k];if(v==null)continue;const d=P[k]-v;if(Math.abs(d)>0.0005)off[k]=d;}
+ M.lvOff=off;M.lvR0=Math.max(1,v14LvRem(M));try{const l=v14LvLines(M);M.lvLn0={c:l.c,k:l.k};}catch(e){M.lvLn0={};}}
+function v161W(M){if(!M.lvOff||M.ended)return 0;return clamp(v14LvRem(M)/(M.lvR0||95),0,1);}
+function v161Apply(M,r){const w=v161W(M);if(!w)return r;const o=M.lvOff;let ln=null;const L0=M.lvLn0||{};
+ for(const k in o){if(r[k]==null)continue;if(/^l[ck]/.test(k)){if(!ln){try{ln=v14LvLines(M);}catch(e){ln={};}}if(k[1]==='c'?ln.c!==L0.c:ln.k!==L0.k)continue;}r[k]=clamp(r[k]+o[k]*w,0.001,0.999);}return r;}
+(function(){const _lp=lvProbs;lvProbs=function(M){const r=_lp.apply(this,arguments);try{if(M&&M.lvOff&&!window.__v161off)v161Apply(M,r);}catch(e){}return r;};
+ if(typeof v14LvP==='function'){const _p=v14LvP;v14LvP=function(M,b){const v=_p.apply(this,arguments);try{if(M&&M.lvOff&&b&&b.ln&&/^l[ck]/.test(b.mk)&&!window.__v161off&&M.lvOff[b.mk]!=null){const L0=M.lvLn0||{};if(/^lc/.test(b.mk)?b.ln.c===L0.c:b.ln.k===L0.k)return clamp(v+M.lvOff[b.mk]*v161W(M),0.001,0.999);}}catch(e){}return v;};}})();
+// ----- dvojitá šance a sázka bez remízy vždy navazují na zobrazený kurz 1X2 (dřív se počítaly z jiného modelu remízy) -----
+(function(){const _mo=matchOdds;matchOdds=function(h,a,mid){const o=_mo.apply(this,arguments);try{if(o&&o['1']&&o['X']&&o['2']&&o['1X']&&!window.__v161off){const q=[1/o['1'],1/o['X'],1/o['2']];const s=q[0]+q[1]+q[2];const p1=q[0]/s,pX=q[1]/s,p2=q[2]/s;const od=p=>roundOdd(1/(Math.max(0.005,p)*1.05));
+ const r=Object.assign({},o);r['1X']=od(p1+pX);r['12']=od(p1+p2);r['X2']=od(pX+p2);if(o.dnb1){r.dnb1=od(p1/Math.max(0.01,p1+p2));r.dnb2=od(p2/Math.max(0.01,p1+p2));}return r;}}catch(e){}return o;};})();
+
 
 // ---------- boot ----------
 window.FM_DATA_VER='71564f09';
